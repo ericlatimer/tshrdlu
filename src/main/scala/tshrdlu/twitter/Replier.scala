@@ -71,51 +71,60 @@ class SentimentReplier extends BaseReplier {
 
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
     log.info("Trying to reply via sentiments")
-    val HashRE = """\b?#([^ ]*)\b""".r
-    //val ReviewLinkRE = """reviews":"([^"]*)"""".r
+   
+    
     val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links""".r                
  
-   // val api_key="mp842nfgxevjq6wma6rh7m9k"
-    val text = stripLeadMention(status.getText).toLowerCase
+
+    val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
     
-    val searchTerm = HashRE.findAllIn(text).matchData.next.group(1)
-    
-    //val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + searchTerm + "&page_limit=1")
-     
-    //val s = html.mkString
-    //val reviewLink = ReviewLinkRE.findAllIn(s).matchData.next.group(1)
-   
-    //val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
-    //val reviews =  htmlReview.mkString
+    val moviesList = scala.io.Source.fromFile("movies.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]",""))
+    println(moviesList)
+    val searchTerms = moviesList.filter(text.contains(_)).sortBy(-_.length)  //for ( movie <- moviesList) yield {
+    val searchTerm = searchTerms(0).replaceAll(" ","+")				
+    println(searchTerms)
     val reviews = getReviews(searchTerm)
+  
 
     //List of "freshness" score from rotten tomatoes and corresponding quote for movie
     val score_quote: List[(String,Future[String])]= {for { ScoreRE(score,quote) <- ScoreRE findAllIn reviews} yield (score,Future{quote})}.toList
 
 	val polarity = Sentimenter.getPolarity(Array(text)).head
 	val score = if(polarity == "0") "rotten"
-		    else if (polarity == "2") "none"
 		    else "fresh"
-	val filteredReviews = score_quote.filter(sq => sq._1 == score)
+	val (_,freshReviews) = score_quote.filter(sq => sq._1 == "fresh").unzip
+        val (_,rottenReviews) = score_quote.filter(sq => sq._1 == "rotten").unzip
+	val (_,neutralReviews) = score_quote.filter(sq => sq._1 == "none").unzip
 	println("tweet polarity: " + polarity)
 	println("fresh score: " + score)
-        if(filteredReviews.isEmpty){
-		val adversary = getOpposite(score)
-		val adversaryReviews = score_quote.filter(sq => sq._1 == adversary)
-		if(!adversaryReviews.isEmpty){
-			val (oppScores,oppReviews) = adversaryReviews.unzip
-			val adversaryFuture = Future.sequence(oppReviews) 
-			adversaryFuture.map(_.map(review => "I disagree... " + review).filter(_.length <= maxLength))
-		}
-		else{
-			val neutralReviews = score_quote.filter(sq => sq._1 == "none")
-			if(!neutralReviews.isEmpty){
-				val (neuScores,neuReviews) = neutralReviews.unzip
-				val neutralFuture = Future.sequence(neuReviews)
-				neutralFuture.map(_.map(review => "I disagree... " + review).filter(_.length <= maxLength))
-      			}
-			else{
-				val statusSeqFutures: Seq[Future[Seq[Status]]] = 
+	val freshCount = freshReviews.map(_.filter(_.length>1))
+	val rottenCount = rottenReviews.map(_.filter(_.length>1))
+        val neutralCount = neutralReviews.map(_.filter(_.length>1))
+	
+	if(polarity == "0"){
+		if(!rottenCount.isEmpty)
+        		extractResponse(rottenReviews,false,maxLength)
+		else if(!freshCount.isEmpty)
+			extractResponse(freshReviews,true,maxLength)
+		else if(!neutralCount.isEmpty)
+			extractResponse(neutralReviews,false,maxLength)
+		else
+			defaultResponse(text,maxLength,polarity)
+	}
+	else
+		if(!freshCount.isEmpty)
+        		extractResponse(freshReviews,false,maxLength)
+		else if(!rottenCount.isEmpty)
+			extractResponse(rottenReviews,true,maxLength)
+		else if(!neutralCount.isEmpty)
+			extractResponse(neutralReviews,false,maxLength)
+		else
+			defaultResponse(text,maxLength,polarity)	
+
+  }
+
+  def defaultResponse(text: String, maxL: Int, polarity:String): Future[Seq[String]] = {
+	val statusSeqFutures: Seq[Future[Seq[Status]]] = 
 					SimpleTokenizer(text)
 					.filter(_.length > 3)
 					.filter(_.length < 10)
@@ -132,20 +141,29 @@ class SentimentReplier extends BaseReplier {
 
  				// Filter statuses to their text and make sure they are short enough to use.
     				statusesFuture.map(_.flatMap(getText)
-					.filter(_.length <= maxLength)
+					.filter(_.length <= maxL)
 					.map(_.replaceAll("\"", ""))
-					.filterNot(_.contains('à'))
+					.filterNot(_.contains("äöüÄÖÜßéèáàúùóò".toArray))
 					.filter(x => getPolarity(x) == polarity)
 					)	
-			}
+
+ }
+
+  def extractResponse(reviews: Seq[Future[String]], isOpp: Boolean, maxL: Int): Future[Seq[String]] = {
+	
+		val reviewFuture: Future[Seq[String]] = Future.sequence(reviews)
+		if(!isOpp)
+			reviewFuture.map(seq => if (seq.filter(_.length <= maxL).length < 1) seq.map(_.substring(1,maxL-3)+"...") 
+				else seq.filter(_.length <= maxL))
+		else{
+			val editedFuture = reviewFuture.map(_.map(review => "I disagree... " + review))  
+			editedFuture.map(seq => if (seq.filter(_.length <= maxL).length < 1) seq.map(_.substring(1,maxL-3)+"...") 
+				else seq.filter(_.length <= maxL))
 		}
-	}
-	else  {
-                val (scores,reviews) = filteredReviews.unzip
-		val reviewsFuture: Future[Seq[String]] = Future.sequence(reviews)
-	 	reviewsFuture.map(_.filter(_.length <= maxLength))
-	 }
+	
+	
   }
+
 
   def getReviews(searchTerm: String ): String = {
 	
