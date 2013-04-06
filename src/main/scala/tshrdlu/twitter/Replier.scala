@@ -77,26 +77,27 @@ class SentimentReplier extends BaseReplier {
  
 
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
-    
+    val polarity = Sentimenter.getPolarity(Array(text)).head
     val moviesList = scala.io.Source.fromFile("movies.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]",""))
-    println(moviesList)
+    
     val searchTerms = moviesList.filter(text.contains(_)).sortBy(-_.length)  //for ( movie <- moviesList) yield {
     val searchTerm = searchTerms(0).replaceAll(" ","+")				
-    println(searchTerms)
+    if (searchTerm.isEmpty){
+	defaultResponse(text,maxLength,polarity)
+    }
+    else{
     val reviews = getReviews(searchTerm)
   
 
     //List of "freshness" score from rotten tomatoes and corresponding quote for movie
     val score_quote: List[(String,Future[String])]= {for { ScoreRE(score,quote) <- ScoreRE findAllIn reviews} yield (score,Future{quote})}.toList
 
-	val polarity = Sentimenter.getPolarity(Array(text)).head
-	val score = if(polarity == "0") "rotten"
-		    else "fresh"
+	
+	
 	val (_,freshReviews) = score_quote.filter(sq => sq._1 == "fresh").unzip
         val (_,rottenReviews) = score_quote.filter(sq => sq._1 == "rotten").unzip
 	val (_,neutralReviews) = score_quote.filter(sq => sq._1 == "none").unzip
 	println("tweet polarity: " + polarity)
-	println("fresh score: " + score)
 	val freshCount = freshReviews.map(_.filter(_.length>1))
 	val rottenCount = rottenReviews.map(_.filter(_.length>1))
         val neutralCount = neutralReviews.map(_.filter(_.length>1))
@@ -111,7 +112,7 @@ class SentimentReplier extends BaseReplier {
 		else
 			defaultResponse(text,maxLength,polarity)
 	}
-	else
+	else{
 		if(!freshCount.isEmpty)
         		extractResponse(freshReviews,false,maxLength)
 		else if(!rottenCount.isEmpty)
@@ -119,8 +120,9 @@ class SentimentReplier extends BaseReplier {
 		else if(!neutralCount.isEmpty)
 			extractResponse(neutralReviews,false,maxLength)
 		else
-			defaultResponse(text,maxLength,polarity)	
-
+			defaultResponse(text,maxLength,polarity)
+	}	
+}
   }
 
   def defaultResponse(text: String, maxL: Int, polarity:String): Future[Seq[String]] = {
