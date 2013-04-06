@@ -154,6 +154,9 @@ class SentimentReplier extends BaseReplier {
   def extractResponse(reviews: Seq[Future[String]], isOpp: Boolean, maxL: Int): Future[Seq[String]] = {
 	
 		val reviewFuture: Future[Seq[String]] = Future.sequence(reviews)
+		//val shortUrl = Sentimenter.shortenURL(longUrl)
+		//val substringMax = maxL-shortUrl.length
+
 		if(!isOpp)
 			reviewFuture.map(seq => if (seq.filter(_.length <= maxL).length < 1) seq.map(_.substring(1,maxL-3)+"...") 
 				else seq.filter(_.length <= maxL))
@@ -163,7 +166,7 @@ class SentimentReplier extends BaseReplier {
 				else seq.filter(_.length <= maxL))
 		}
 	
-	
+		
   }
 
 

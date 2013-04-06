@@ -4,14 +4,19 @@ import org.apache.http.client.methods.HttpPost
 import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.DefaultHttpClient
 
+import java.net.URL
+import java.io.DataOutputStream
+
 case class Person(firstName: String, lastName: String, age: Int)
 
 object Sentimenter {
 
   	def main(args: Array[String]) {
-		val polarities = getPolarity(args)
-		val tweetsAndPolarities = args.zip(polarities)
-		tweetsAndPolarities.foreach(println)
+		//val polarities = getPolarity(args)
+		//val tweetsAndPolarities = args.zip(polarities)
+		//tweetsAndPolarities.foreach(println)
+
+		//println("shortened url: " + shortenURL("http://goooooooooooooooooooooooogle.com"))
   	}
 
 	def getPolarity(args: Array[String]) = {
@@ -46,6 +51,16 @@ object Sentimenter {
 											.map(_.trim)
 		
 		polarities.takeRight(polarities.length-1)
+	}
+
+	def shortenURL(longUrl :String) = {
+		//apiKey & login of a user
+		val apiKey = "R_3c86a77dd77647ff425f7bb73b7322b3"
+		val login = "emoney33"
+
+		val link ="http://api.bit.ly/v3/shorten?format=txt&login="+login+"&apiKey="+apiKey+"&longUrl="+longUrl
+		val shortUrl = scala.io.Source.fromURL(link).mkString
+	 	shortUrl.trim
 	}
 }
 
