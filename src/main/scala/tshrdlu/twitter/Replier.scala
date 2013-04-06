@@ -56,6 +56,74 @@ class SynonymReplier extends BaseReplier {
  * topics from the "20 Newsgroups" data
  * e.g. Religion, baseball, atheism, windows, hockey, mideast, pc hardware
  */
+class SentimentReplier extends BaseReplier {
+  import Bot._ 
+  import TwitterRegex._
+  import tshrdlu.util.SimpleTokenizer
+
+  import context.dispatcher
+  import akka.pattern.ask
+  import akka.util._
+  import scala.concurrent.duration._
+  import scala.concurrent.Future
+  implicit val timeout = Timeout(10 seconds)
+
+  def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
+    log.info("Trying to reply via sentiments")
+    val text = stripLeadMention(status.getText).toLowerCase
+	val polarity = Sentimenter.getPolarity(Array(text)).head
+	
+	println("tweet polarity: " + polarity)
+	
+	val statusSeqFutures: Seq[Future[Seq[Status]]] = 
+		SimpleTokenizer(text)
+			.filter(_.length > 3)
+			.filter(_.length < 10)
+			.filterNot(_.contains('/'))
+			.filter(tshrdlu.util.English.isSafe)
+			.sortBy(- _.length)
+			.take(3) 
+			.map(w => (context.parent ? 
+				SearchTwitter(new Query(w))).mapTo[Seq[Status]])
+
+    // Convert this to a Future of a single sequence of candidate replies
+    val statusesFuture: Future[Seq[Status]] =
+      	Future.sequence(statusSeqFutures).map(_.flatten)
+
+    // Filter statuses to their text and make sure they are short enough to use.
+    statusesFuture.map(_.flatMap(getText)
+						.filter(_.length <= maxLength)
+						.map(_.replaceAll("\"", ""))
+						.filterNot(_.contains('à'))
+						.filter(x => getPolarity(x) == polarity)
+						)
+  }
+
+  def getPolarity(tweetStr: String): String = {
+	println("Checking: " + tweetStr)
+	Sentimenter.getPolarity(Array(tweetStr)).head
+  }
+
+  def getText(status: Status): Option[String] = {
+    import tshrdlu.util.English.{isEnglish,isSafe}
+
+    val text = status.getText match {
+      case StripMentionsRE(rest) => rest
+      case x => x
+    }
+    
+    if (!text.contains('@') && !text.contains('/') && isEnglish(text) && isSafe(text))
+      Some(text)
+    else None
+  }
+}
+
+/**
+ * An actor that constructs replies to a given status.
+ * For best results, tweet at me something related to one of the 
+ * topics from the "20 Newsgroups" data
+ * e.g. Religion, baseball, atheism, windows, hockey, mideast, pc hardware
+ */
 class TopicModelReplier extends BaseReplier {
   import Bot._ 
   import TwitterRegex._

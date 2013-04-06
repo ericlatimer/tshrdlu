@@ -72,14 +72,16 @@ class Bot extends Actor with ActorLogging {
   val bigramReplier = context.actorOf(Props[BigramReplier], name = "BigramReplier")
   val luceneReplier = context.actorOf(Props[LuceneReplier], name = "LuceneReplier")
   val topicModelReplier = context.actorOf(Props[TopicModelReplier], name = "TopicModelReplier")
+  val sentimentReplier = context.actorOf(Props[SentimentReplier], name = "SentimentReplier")
 
   override def preStart {
-    replierManager ! RegisterReplier(streamReplier)
-    replierManager ! RegisterReplier(synonymReplier)
-    replierManager ! RegisterReplier(synonymStreamReplier)
-    replierManager ! RegisterReplier(bigramReplier)
-    replierManager ! RegisterReplier(luceneReplier)
-    replierManager ! RegisterReplier(topicModelReplier)
+    //replierManager ! RegisterReplier(streamReplier)
+    //replierManager ! RegisterReplier(synonymReplier)
+    //replierManager ! RegisterReplier(synonymStreamReplier)
+    //replierManager ! RegisterReplier(bigramReplier)
+    //replierManager ! RegisterReplier(luceneReplier)
+    //replierManager ! RegisterReplier(topicModelReplier)
+	replierManager ! RegisterReplier(sentimentReplier)
   }
 
   def receive = {
