@@ -60,6 +60,7 @@ class SentimentReplier extends BaseReplier {
   import Bot._ 
   import TwitterRegex._
   import tshrdlu.util.SimpleTokenizer
+  import scala.io.Source
 
   import context.dispatcher
   import akka.pattern.ask
@@ -70,33 +71,101 @@ class SentimentReplier extends BaseReplier {
 
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
     log.info("Trying to reply via sentiments")
+    val HashRE = """\b?#([^ ]*)\b""".r
+    //val ReviewLinkRE = """reviews":"([^"]*)"""".r
+    val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links""".r                
+ 
+   // val api_key="mp842nfgxevjq6wma6rh7m9k"
     val text = stripLeadMention(status.getText).toLowerCase
+    
+    val searchTerm = HashRE.findAllIn(text).matchData.next.group(1)
+    
+    //val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + searchTerm + "&page_limit=1")
+     
+    //val s = html.mkString
+    //val reviewLink = ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+   
+    //val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
+    //val reviews =  htmlReview.mkString
+    val reviews = getReviews(searchTerm)
+
+    //List of "freshness" score from rotten tomatoes and corresponding quote for movie
+    val score_quote: List[(String,Future[String])]= {for { ScoreRE(score,quote) <- ScoreRE findAllIn reviews} yield (score,Future{quote})}.toList
+
 	val polarity = Sentimenter.getPolarity(Array(text)).head
-	
+	val score = if(polarity == "0") "rotten"
+		    else if (polarity == "2") "none"
+		    else "fresh"
+	val filteredReviews = score_quote.filter(sq => sq._1 == score)
 	println("tweet polarity: " + polarity)
+	println("fresh score: " + score)
+        if(filteredReviews.isEmpty){
+		val adversary = getOpposite(score)
+		val adversaryReviews = score_quote.filter(sq => sq._1 == adversary)
+		if(!adversaryReviews.isEmpty){
+			val (oppScores,oppReviews) = adversaryReviews.unzip
+			val adversaryFuture = Future.sequence(oppReviews) 
+			adversaryFuture.map(_.map(review => "I disagree... " + review).filter(_.length <= maxLength))
+		}
+		else{
+			val neutralReviews = score_quote.filter(sq => sq._1 == "none")
+			if(!neutralReviews.isEmpty){
+				val (neuScores,neuReviews) = neutralReviews.unzip
+				val neutralFuture = Future.sequence(neuReviews)
+				neutralFuture.map(_.map(review => "I disagree... " + review).filter(_.length <= maxLength))
+      			}
+			else{
+				val statusSeqFutures: Seq[Future[Seq[Status]]] = 
+					SimpleTokenizer(text)
+					.filter(_.length > 3)
+					.filter(_.length < 10)
+					.filterNot(_.contains('/'))
+					.filter(tshrdlu.util.English.isSafe)
+					.sortBy(- _.length)
+					.take(3) 
+					.map(w => (context.parent ? 
+					SearchTwitter(new Query(w))).mapTo[Seq[Status]])
+
+  				// Convert this to a Future of a single sequence of candidate replies
+   				val statusesFuture: Future[Seq[Status]] =
+      				Future.sequence(statusSeqFutures).map(_.flatten)
+
+ 				// Filter statuses to their text and make sure they are short enough to use.
+    				statusesFuture.map(_.flatMap(getText)
+					.filter(_.length <= maxLength)
+					.map(_.replaceAll("\"", ""))
+					.filterNot(_.contains('à'))
+					.filter(x => getPolarity(x) == polarity)
+					)	
+			}
+		}
+	}
+	else  {
+                val (scores,reviews) = filteredReviews.unzip
+		val reviewsFuture: Future[Seq[String]] = Future.sequence(reviews)
+	 	reviewsFuture.map(_.filter(_.length <= maxLength))
+	 }
+  }
+
+  def getReviews(searchTerm: String ): String = {
 	
-	val statusSeqFutures: Seq[Future[Seq[Status]]] = 
-		SimpleTokenizer(text)
-			.filter(_.length > 3)
-			.filter(_.length < 10)
-			.filterNot(_.contains('/'))
-			.filter(tshrdlu.util.English.isSafe)
-			.sortBy(- _.length)
-			.take(3) 
-			.map(w => (context.parent ? 
-				SearchTwitter(new Query(w))).mapTo[Seq[Status]])
+    	val ReviewLinkRE = """reviews":"([^"]*)"""".r
+    	
+        val api_key="mp842nfgxevjq6wma6rh7m9k"       
+	val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + searchTerm + "&page_limit=1")
+     
+    	val s = html.mkString
+   	val reviewLink = ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+   
+    	val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
+   	htmlReview.mkString
 
-    // Convert this to a Future of a single sequence of candidate replies
-    val statusesFuture: Future[Seq[Status]] =
-      	Future.sequence(statusSeqFutures).map(_.flatten)
+  }
+  
+  def getOpposite(opinion: String): String = {
+	if(opinion == "fresh") "rotten"
+	else "fresh"
 
-    // Filter statuses to their text and make sure they are short enough to use.
-    statusesFuture.map(_.flatMap(getText)
-						.filter(_.length <= maxLength)
-						.map(_.replaceAll("\"", ""))
-						.filterNot(_.contains('à'))
-						.filter(x => getPolarity(x) == polarity)
-						)
   }
 
   def getPolarity(tweetStr: String): String = {
