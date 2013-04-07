@@ -73,8 +73,8 @@ class SentimentReplier extends BaseReplier {
     log.info("Trying to reply via sentiments")
    
     
-    val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links""".r                
- 
+    //val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links""".r                
+    val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links":\{"review":"([^"]*)"""".r
 
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
     val polarity = Sentimenter.getPolarity(Array(text)).head
@@ -90,29 +90,30 @@ class SentimentReplier extends BaseReplier {
   
 
     //List of "freshness" score from rotten tomatoes and corresponding quote for movie
-    val score_quote: List[(String,Future[String])]= {for { ScoreRE(score,quote) <- ScoreRE findAllIn reviews} yield (score,Future{quote})}.toList
+    val score_quote: List[(String,Future[String],String)]= {for { ScoreRE(score,quote,link) <- ScoreRE findAllIn reviews} yield (score,Future{quote},link)}.toList
 
 	
 	
-	val (_,freshReviews) = score_quote.filter(sq => sq._1 == "fresh").unzip
-        val (_,rottenReviews) = score_quote.filter(sq => sq._1 == "rotten").unzip
-	val (_,neutralReviews) = score_quote.filter(sq => sq._1 == "none").unzip
+	val (_,freshReviews,freshLinks) = score_quote.filter(sq => sq._1 == "fresh").unzip3
+        val (_,rottenReviews,rottenLinks) = score_quote.filter(sq => sq._1 == "rotten").unzip3
+	val (_,neutralReviews,neutralLinks) = score_quote.filter(sq => sq._1 == "none").unzip3
+
 	println("tweet polarity: " + polarity)
 	val freshCount = freshReviews.map(_.filter(_.length>1))
 	val rottenCount = rottenReviews.map(_.filter(_.length>1))
         val neutralCount = neutralReviews.map(_.filter(_.length>1))
 	
-	if(polarity == "0"){
+	//if(polarity == "0"){
 		if(!rottenCount.isEmpty)
-        		extractResponse(rottenReviews,false,maxLength)
+        		extractResponse(rottenReviews,rottenLinks,false,maxLength)
 		else if(!freshCount.isEmpty)
-			extractResponse(freshReviews,true,maxLength)
+			extractResponse(freshReviews,freshLinks,true,maxLength)
 		else if(!neutralCount.isEmpty)
-			extractResponse(neutralReviews,false,maxLength)
+			extractResponse(neutralReviews,neutralLinks,false,maxLength)
 		else
 			defaultResponse(text,maxLength,polarity)
-	}
-	else{
+	//}
+	/*else{
 		if(!freshCount.isEmpty)
         		extractResponse(freshReviews,false,maxLength)
 		else if(!rottenCount.isEmpty)
@@ -121,7 +122,7 @@ class SentimentReplier extends BaseReplier {
 			extractResponse(neutralReviews,false,maxLength)
 		else
 			defaultResponse(text,maxLength,polarity)
-	}	
+	}	*/
 }
   }
 
@@ -151,7 +152,7 @@ class SentimentReplier extends BaseReplier {
 
  }
 
-  def extractResponse(reviews: Seq[Future[String]], isOpp: Boolean, maxL: Int): Future[Seq[String]] = {
+  def extractResponse(reviews: Seq[Future[String]], links:Seq[String], isOpp: Boolean, maxL: Int): Future[Seq[String]] = {
 	
 		val reviewFuture: Future[Seq[String]] = Future.sequence(reviews)
 		//val shortUrl = Sentimenter.shortenURL(longUrl)
