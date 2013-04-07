@@ -2,6 +2,7 @@ package tshrdlu.twitter
 
 import akka.actor._
 import twitter4j._
+import scala.language.implicitConversions
 
 /**
  * An actor that constructs replies to a given status.
@@ -69,61 +70,93 @@ class SentimentReplier extends BaseReplier {
   import scala.concurrent.Future
   implicit val timeout = Timeout(10 seconds)
 
+
+	class TweetString(s: String) {
+	  def dropUpto(attr: String, extra: Int = 4) = {
+		val index = s.indexOf("\"" + attr + "\"")
+		if (index == -1) "" else s.drop(index + attr.length + extra)
+	  }
+	  def getText(attr: String) = dropUpto(attr).takeWhile(_ != '"')
+	  def getInt(attr: String) = dropUpto(attr,3).takeWhile(_ != ',')
+	}
+
+  def getPrevTweets(name: String) :Seq[String] =  {
+
+
+	implicit def stringToTweetString(s: String) = new TweetString(s)
+
+	val link = "https://api.twitter.com/1/statuses/user_timeline.json?include_entities=true&inc%E2%80%8C%E2%80%8Blude_rts=true&screen_name="+name+"&since:2013-01-01&until:2014-04-07"
+
+	val splitTweets = scala.io.Source.fromURL(link).mkString.trim.split("\\},\\{").toList
+	val tweets = splitTweets.map{x => "{"+x+"}"}
+	for (tweet <- tweets) yield stringToTweetString(tweet).getText("text")
+  }
+
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
     log.info("Trying to reply via sentiments")
-   
-    
-    //val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links""".r                
-    val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links":\{"review":"([^"]*)"""".r
+    val prevTweets = getPrevTweets("eric_anlp").map{t => stripLeadMention(t.substring(0, 
+															if (t.indexOf(" http") > 0)
+																t.indexOf(" http")
+															else t.length))}
+
+    //val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]*","quote":"([\sA-Za-z\W',\.]*)","links":\{"review":"([^"]*)"""".r
+	val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]+","quote":"([\sA-Za-z\W',\.]+)","links":\{("review":")?([^"]+)"?\}""".r
 
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
+	val username = status.getUser().getScreenName()
     val polarity = Sentimenter.getPolarity(Array(text)).head
     val moviesList = scala.io.Source.fromFile("movies.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]",""))
     
-    val searchTerms = moviesList.filter(text.contains(_)).sortBy(-_.length)  //for ( movie <- moviesList) yield {
-    val searchTerm = searchTerms(0).replaceAll(" ","+")				
-    if (searchTerm.isEmpty){
-	defaultResponse(text,maxLength,polarity)
-    }
-    else{
-    val reviews = getReviews(searchTerm)
-  
+    val searchTerms = moviesList.filter(x => {("""\b"""+x+"""\b""").r.findAllIn(text).matchData.toList.length > 0}).sortBy(-_.length)
+	if (searchTerms.isEmpty){
+		defaultResponse(text,maxLength,polarity)
+	}
+	else{
+		val searchTerm = searchTerms(0).replaceAll(" ","+")
+		val reviews = getReviews(searchTerm)
+	  	println("Search term: " + searchTerm)
 
-    //List of "freshness" score from rotten tomatoes and corresponding quote for movie
-    val score_quote: List[(String,Future[String],String)]= {for { ScoreRE(score,quote,link) <- ScoreRE findAllIn reviews} yield (score,Future{quote},link)}.toList
+		//List of "freshness" score from rotten tomatoes and corresponding quote for movie
+		val score_quote_link: List[(String,String,String)]= {for { ScoreRE(score,quote,_,link) <- ScoreRE findAllIn reviews} yield (score,quote,link)}.toList
 
-	
-	
-	val (_,freshReviews,freshLinks) = score_quote.filter(sq => sq._1 == "fresh").unzip3
-        val (_,rottenReviews,rottenLinks) = score_quote.filter(sq => sq._1 == "rotten").unzip3
-	val (_,neutralReviews,neutralLinks) = score_quote.filter(sq => sq._1 == "none").unzip3
+		val score_quote = score_quote_link.map(sql => {
+					(sql._1,sql._2 + " " + Sentimenter.shortenURL(sql._3))})
 
-	println("tweet polarity: " + polarity)
-	val freshCount = freshReviews.map(_.filter(_.length>1))
-	val rottenCount = rottenReviews.map(_.filter(_.length>1))
-        val neutralCount = neutralReviews.map(_.filter(_.length>1))
-	
-	//if(polarity == "0"){
-		if(!rottenCount.isEmpty)
-        		extractResponse(rottenReviews,rottenLinks,false,maxLength)
-		else if(!freshCount.isEmpty)
-			extractResponse(freshReviews,freshLinks,true,maxLength)
-		else if(!neutralCount.isEmpty)
-			extractResponse(neutralReviews,neutralLinks,false,maxLength)
-		else
-			defaultResponse(text,maxLength,polarity)
-	//}
-	/*else{
-		if(!freshCount.isEmpty)
-        		extractResponse(freshReviews,false,maxLength)
-		else if(!rottenCount.isEmpty)
-			extractResponse(rottenReviews,true,maxLength)
-		else if(!neutralCount.isEmpty)
-			extractResponse(neutralReviews,false,maxLength)
-		else
-			defaultResponse(text,maxLength,polarity)
-	}	*/
-}
+		val (_,freshRev) = score_quote.filter(sq => sq._1 == "fresh").unzip
+		val (_,rottenRev) = score_quote.filter(sq => sq._1 == "rotten").unzip
+		val (_,neutralRev) = score_quote.filter(sq => sq._1 == "none").unzip
+		println("Tweet polarity: " + polarity)
+
+		val freshReviews = freshRev.map(rev => Future{rev})
+		val rottenReviews = rottenRev.map(rev => Future{rev})
+		val neutralReviews = neutralRev.map(rev => Future{rev})
+
+		val freshCount = freshReviews.map(_.filter(_.length>1))
+		val rottenCount = rottenReviews.map(_.filter(_.length>1))
+			val neutralCount = neutralReviews.map(_.filter(_.length>1))
+
+		if(polarity == "0"){
+			if(!rottenCount.isEmpty){
+				extractResponse(rottenReviews,false,maxLength-username.length,prevTweets)
+			}
+			else if(!freshCount.isEmpty)
+				extractResponse(freshReviews,true,maxLength-username.length,prevTweets)
+			else if(!neutralCount.isEmpty)
+				extractResponse(neutralReviews,false,maxLength-username.length,prevTweets)
+			else
+				defaultResponse(text,maxLength,polarity)
+		}
+		else{
+			if(!freshCount.isEmpty)
+				extractResponse(freshReviews,false,maxLength-username.length,prevTweets)
+			else if(!rottenCount.isEmpty)
+				extractResponse(rottenReviews,true,maxLength-username.length,prevTweets)
+			else if(!neutralCount.isEmpty)
+				extractResponse(neutralReviews,false,maxLength-username.length,prevTweets)
+			else
+				defaultResponse(text,maxLength,polarity)
+		}	
+	}
   }
 
   def defaultResponse(text: String, maxL: Int, polarity:String): Future[Seq[String]] = {
@@ -152,19 +185,44 @@ class SentimentReplier extends BaseReplier {
 
  }
 
-  def extractResponse(reviews: Seq[Future[String]], links:Seq[String], isOpp: Boolean, maxL: Int): Future[Seq[String]] = {
+  def extractResponse(reviews: Seq[Future[String]], isOpp: Boolean, maxL: Int, prevTweets: Seq[String]): Future[Seq[String]] = {
 	
 		val reviewFuture: Future[Seq[String]] = Future.sequence(reviews)
-		//val shortUrl = Sentimenter.shortenURL(longUrl)
-		//val substringMax = maxL-shortUrl.length
 
 		if(!isOpp)
-			reviewFuture.map(seq => if (seq.filter(_.length <= maxL).length < 1) seq.map(_.substring(1,maxL-3)+"...") 
-				else seq.filter(_.length <= maxL))
+			reviewFuture.map(seq => if (seq.filter(_.length-23 <= maxL).length < 1){
+						seq.map{review => {
+								val split = review.split(" http")
+								val link = "http" + split(1)
+								val revMinusLink = review.substring(0,maxL-link.length)
+								val returns = revMinusLink +" " + link
+								if (!prevTweets.contains(revMinusLink))
+									returns
+								else
+									"Filter me out please"}}
+								}
+				else {
+								seq.map{s => s.substring(0, s.indexOf(" http"))}
+												.filter(_.length <= maxL)
+												.filterNot(x => prevTweets.contains(x))}).map(seq => seq.filterNot(_ == "Filter me out please"))
+					
+
 		else{
 			val editedFuture = reviewFuture.map(_.map(review => "I disagree... " + review))  
-			editedFuture.map(seq => if (seq.filter(_.length <= maxL).length < 1) seq.map(_.substring(1,maxL-3)+"...") 
-				else seq.filter(_.length <= maxL))
+			editedFuture.map(seq => if (seq.filter(_.length-23 <= maxL).length < 1)
+						seq.map{review => {
+								val split = review.split(" http")
+								val link = "http" + split(1)
+								val revMinusLink = review.substring(0,maxL-link.length)
+								val returns = revMinusLink +" " + link
+								if (!prevTweets.contains(revMinusLink))
+									returns
+								else
+									"Filter me out please"}}
+				else {
+								seq.map{s => s.substring(0, s.indexOf(" http"))}
+												.filter(_.length <= maxL)
+												.filterNot(x => prevTweets.contains(x))}).map(seq => seq.filterNot(_ == "Filter me out please"))
 		}
 	
 		
@@ -193,7 +251,6 @@ class SentimentReplier extends BaseReplier {
   }
 
   def getPolarity(tweetStr: String): String = {
-	println("Checking: " + tweetStr)
 	Sentimenter.getPolarity(Array(tweetStr)).head
   }
 

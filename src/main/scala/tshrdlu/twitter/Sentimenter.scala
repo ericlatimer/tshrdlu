@@ -43,7 +43,6 @@ object Sentimenter {
 		val responseContent = response.getEntity.getContent()
 		val responseContentString = scala.io.Source.fromInputStream(responseContent)
 										.getLines().mkString
-		//println(responseContentString)
 
 		val allPolarities = """polarity":(\d)""".r findAllIn responseContentString
 		val polarities = allPolarities.mkString(" ")
@@ -59,8 +58,12 @@ object Sentimenter {
 		val login = "emoney33"
 
 		val link ="http://api.bit.ly/v3/shorten?format=txt&login="+login+"&apiKey="+apiKey+"&longUrl="+longUrl
-		val shortUrl = scala.io.Source.fromURL(link).mkString
-	 	shortUrl.trim
+		try {
+			val shortUrl = scala.io.Source.fromURL(link).mkString
+	 		shortUrl.trim
+		} catch  {
+			case e: Exception => "http://bit.ly/RTELAF"
+		}
 	}
 }
 
