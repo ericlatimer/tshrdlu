@@ -72,6 +72,7 @@ class SentimentReplier extends BaseReplier {
   import scala.concurrent.duration._
   import scala.concurrent.Future
   implicit val timeout = Timeout(10 seconds)
+  import chalk.lang.eng.Twokenize
 
   //Class copied from previous Project Phase to extract just text from tweet string
   class TweetString(s: String) {
@@ -113,20 +114,20 @@ class SentimentReplier extends BaseReplier {
     // Get text of new status, convert to lower case, remove all non-alphanumeric characters to help with finding a movie title
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
 
-  
-
-    //System.exit(0);
-    // Use Sentimenter API to get the polarity of the status (0 -> negative, 2 -> neutral, 4 -> positive)
-    //val polarity = Sentimenter.getPolarity(Array(text)).head
-    val polarity = getPolarity(text)
-    println("Tweet polarity: " + polarity)
-
     // Read in list of valid movies from the movies.txt file, converting to lower case and removing non-alphanumeric characters
     val moviesList = scala.io.Source.fromFile("movies.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]",""))
     
     // Determine what movies are mentioned in the status text, sort the mentioned movie titles by character length in decreasing order,
     // use the head of the resulting list as the search term for Rotten Tomatoes 
     val searchTerms = moviesList.filter(x => {("""\b"""+x+"""\b""").r.findAllIn(text).matchData.toList.length > 0}).sortBy(-_.length)
+
+    // Use nak to generate a sentiment for the tweet
+    val movieTitleTokens = Twokenize(searchTerms(0))
+    val tweetTokens = Twokenize(text)
+    val textForPolarity = tweetTokens.filterNot(movieTitleTokens.contains).mkString(" ")
+    println("textForPolarity: " + textForPolarity)
+    val polarity = getPolarity(textForPolarity)
+    println("Tweet polarity: " + polarity)
 
     // If no movie title is found in the text, respond like StreamReplier, but matching polarity of the original status
     if (searchTerms.isEmpty){
@@ -137,7 +138,7 @@ class SentimentReplier extends BaseReplier {
 	val searchTerm = searchTerms(0).replaceAll(" ","+")
 
   // Get list of reviews of the movie from Rotten Tomatoes 
-	val reviews = getReviews(searchTerm)
+	val reviews = getReviews(searchTerms(0))
 	println("Search term: " + searchTerm)
 
 	// List of "freshness" score from rotten tomatoes and corresponding quote/review and full review link (if available) for movie
@@ -267,31 +268,37 @@ class SentimentReplier extends BaseReplier {
 								.filter(_.length <= maxL)
 								.filterNot(x => prevTweets.contains(x))}).map(seq => seq.filterNot(_ == "Filter me out please"))
 		}
-	
-		
   }
 
   /**
    * Use Rotten Tomatoes API to obtain search results for given movie title (search term)
    */
   def getReviews(searchTerm: String ): String = {
-	
-    	val ReviewLinkRE = """reviews":"([^"]*)"""".r
-    	
-      
-      val file = new File("rottentomatoes.properties")
-      val api_key = Sentimenter.getProperty(file,"apiKey")      
-	val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + searchTerm + "&page_limit=1")
-     
-    	val s = html.mkString
-      val matchedData = ReviewLinkRE.findAllIn(s).matchData
-      if (matchedData.length > 0) {
-          val reviewLink = matchedData.next.group(1)
-          val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
-  htmlReview.mkString
-      }
+    val term = searchTerm.replaceAll(" ","+") 
+    val ReviewLinkRE = """reviews":"([^"]*)"""".r
+    val TotalRE = """total":([\d]+),""".r
+    val TitleRE = """"title":"([^"]+)",((?!reviews).)*reviews":"([^"]*)",""".r
+
+    val file = new File("rottentomatoes.properties")
+    val api_key = Sentimenter.getProperty(file,"apiKey")      
+    val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + term + "&page_limit=10")
+    val s = html.mkString
+
+    val totalReviews = TotalRE.findAllIn(s).matchData.next.group(1)
+
+    println("term: " + term)
+    val reviewLink = if ( totalReviews != "1"){
+      val allMatches = {for { TitleRE(title,_,rev) <- TitleRE findAllIn s} yield (title.toLowerCase,rev)}.toList.toMap
+      println("allMatches: " + allMatches)
+      if(allMatches.keys.toList.contains(searchTerm))
+        allMatches(searchTerm)
       else
-          "none"
+        ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+    }
+    else
+        ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+
+    Source.fromURL(reviewLink+"?apikey="+api_key).mkString
   }
 
 
