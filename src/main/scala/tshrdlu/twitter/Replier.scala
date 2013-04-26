@@ -3,6 +3,7 @@ package tshrdlu.twitter
 import akka.actor._
 import twitter4j._
 import scala.language.implicitConversions
+import java.io.File
 
 /**
  * An actor that constructs replies to a given status.
@@ -277,15 +278,20 @@ class SentimentReplier extends BaseReplier {
 	
     	val ReviewLinkRE = """reviews":"([^"]*)"""".r
     	
-        val api_key="mp842nfgxevjq6wma6rh7m9k"       
+      
+      val file = new File("rottentomatoes.properties")
+      val api_key = Sentimenter.getProperty(file,"apiKey")      
 	val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + searchTerm + "&page_limit=1")
      
     	val s = html.mkString
-   	val reviewLink = ReviewLinkRE.findAllIn(s).matchData.next.group(1)
-   
-    	val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
-   	htmlReview.mkString
-
+      val matchedData = ReviewLinkRE.findAllIn(s).matchData
+      if (matchedData.length > 0) {
+          val reviewLink = matchedData.next.group(1)
+          val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
+  htmlReview.mkString
+      }
+      else
+          "none"
   }
 
 

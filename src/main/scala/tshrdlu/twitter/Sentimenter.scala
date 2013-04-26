@@ -6,6 +6,8 @@ import org.apache.http.impl.client.DefaultHttpClient
 
 import java.net.URL
 import java.io.DataOutputStream
+import scala.io.Source
+import java.io.File
 
 case class Person(firstName: String, lastName: String, age: Int)
 
@@ -19,7 +21,7 @@ object Sentimenter {
 		//println("shortened url: " + shortenURL("http://goooooooooooooooooooooooogle.com"))
   	}
 
-	def getPolarity(args: Array[String]) = {
+	def getOldPolarity(args: Array[String]) = {
 		// create an HttpPost object
 		val post = new HttpPost("http://www.sentiment140.com/api/bulkClassifyJson?appid=emoney33@gmail.com")
 
@@ -54,10 +56,9 @@ object Sentimenter {
 
 	def shortenURL(longUrl :String) = {
 		//apiKey & login of a user
-		val creds = Source.fromFile(new File("bitly.properties")).getLines.toList
-
-		val apiKey = creds[0].split("=")[1]
-		val login = creds[0].split("=")[1]
+		val file = new File("bitly.properties")
+		val login = getProperty(file,"login")
+		val apiKey = getProperty(file,"apiKey")
 
 		val link ="http://api.bit.ly/v3/shorten?format=txt&login="+login+"&apiKey="+apiKey+"&longUrl="+longUrl
 		try {
@@ -79,9 +80,16 @@ object Sentimenter {
 		out.close
 	}
 
-	def getProperty(file :File, property :String) {
+	def getProperty(file :File, property :String) = {
 		val creds = Source.fromFile(file).getLines.toList
-
+		val keys = for (line <- creds) yield {
+			val split = line.split("=")
+			if (split(0) == property)
+				split(1)
+			else
+				None
+		}
+		keys.filterNot(k => k == None)(0)
 	}
 }
 

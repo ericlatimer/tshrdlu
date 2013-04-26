@@ -43,7 +43,7 @@ import scala.io.Source
         val s = html.mkString
         val matchedData = ReviewLinkRE.findAllIn(s).matchData
         if (matchedData.length > 0) {
-            val reviewLink = ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+            val reviewLink = matchedData.next.group(1)
             val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
     htmlReview.mkString
         }
