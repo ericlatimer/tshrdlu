@@ -111,8 +111,10 @@ class SentimentReplier extends BaseReplier {
     // Get username of the source of the status
     val username = status.getUser().getScreenName()
 
+    //System.exit(0);
     // Use Sentimenter API to get the polarity of the status (0 -> negative, 2 -> neutral, 4 -> positive)
-    val polarity = Sentimenter.getPolarity(Array(text)).head
+    //val polarity = Sentimenter.getPolarity(Array(text)).head
+    val polarity = getPolarity(text)
     println("Tweet polarity: " + polarity)
 
     // Read in list of valid movies from the movies.txt file, converting to lower case and removing non-alphanumeric characters
@@ -124,13 +126,13 @@ class SentimentReplier extends BaseReplier {
 
     // If no movie title is found in the text, respond like StreamReplier, but matching polarity of the original status
     if (searchTerms.isEmpty){
-	defaultResponse(text,maxLength,polarity)
+	   defaultResponse(text,maxLength,polarity)
     }
     else{
         // Add "+" to allow for appropriate input search term for Rotten Tomatoes
 	val searchTerm = searchTerms(0).replaceAll(" ","+")
 
-    	// Get list of reviews of the movie from Rotten Tomatoes 
+  // Get list of reviews of the movie from Rotten Tomatoes 
 	val reviews = getReviews(searchTerm)
 	println("Search term: " + searchTerm)
 
@@ -156,7 +158,7 @@ class SentimentReplier extends BaseReplier {
 	val neutralCount = neutralReviews.map(_.filter(_.length>1))
 
 	// If negative polarity, first try to respond with a "rotten" review
-	if(polarity == "0"){
+	if(polarity == "rotten"){
 		if(!rottenCount.isEmpty)
 			extractResponse(rottenReviews,false,maxLength-username.length,prevTweets)
 		else if(!freshCount.isEmpty)
@@ -288,7 +290,8 @@ class SentimentReplier extends BaseReplier {
    * Use Sentiment140 API to determine polarity of input text
    */
   def getPolarity(tweetStr: String): String = {
-	Sentimenter.getPolarity(Array(tweetStr)).head
+    Sentimenter.generateTweetXMLFile(tweetStr)
+    Fancy("allReviews.xml", "tweet.xml", 0.5, true, false)
   }
 
   def getText(status: Status): Option[String] = {

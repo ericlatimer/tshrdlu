@@ -54,8 +54,10 @@ object Sentimenter {
 
 	def shortenURL(longUrl :String) = {
 		//apiKey & login of a user
-		val apiKey = "R_3c86a77dd77647ff425f7bb73b7322b3"
-		val login = "emoney33"
+		val creds = Source.fromFile(new File("bitly.properties")).getLines.toList
+
+		val apiKey = creds[0].split("=")[1]
+		val login = creds[0].split("=")[1]
 
 		val link ="http://api.bit.ly/v3/shorten?format=txt&login="+login+"&apiKey="+apiKey+"&longUrl="+longUrl
 		try {
@@ -64,6 +66,22 @@ object Sentimenter {
 		} catch  {
 			case e: Exception => "http://bit.ly/RTELAF"
 		}
+	}
+
+	def generateTweetXMLFile(tweet :String)  {
+		val polarity = "positive"
+	  	val out = new java.io.FileWriter("tweet.xml")
+	  	out.write("<dataset>\n")
+		out.write("""<item label="rotten">""")
+        out.write("<content>"+tweet+"</content>")
+        out.write("</item>")
+	  	out.write("</dataset>")
+		out.close
+	}
+
+	def getProperty(file :File, property :String) {
+		val creds = Source.fromFile(file).getLines.toList
+
 	}
 }
 
