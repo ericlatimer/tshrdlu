@@ -96,8 +96,12 @@ class SentimentReplier extends BaseReplier {
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
     log.info("Trying to reply via sentiments")
 
+
+      // Get username of the source of the status
+    val username = status.getUser().getScreenName()
+
     // Get list of all previous tweets of the bot -- to prevent retweeting same review
-    val prevTweets = getPrevTweets("eric_anlp").map{t => stripLeadMention(t.substring(0, 
+    val prevTweets = getPrevTweets("eric_anlp").filter(t => getLeadMention(t) == username).map{t => stripLeadMention(t.substring(0, 
 								if (t.indexOf(" http") > 0)
 								   t.indexOf(" http")
 								else t.length))}
@@ -108,8 +112,7 @@ class SentimentReplier extends BaseReplier {
     // Get text of new status, convert to lower case, remove all non-alphanumeric characters to help with finding a movie title
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
 
-    // Get username of the source of the status
-    val username = status.getUser().getScreenName()
+  
 
     //System.exit(0);
     // Use Sentimenter API to get the polarity of the status (0 -> negative, 2 -> neutral, 4 -> positive)
