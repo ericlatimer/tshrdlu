@@ -6,7 +6,7 @@ if [ -z $TSHRDLU_DIR ]
 then
    TSHRDLU_DIR=`dirname $0`/../
 fi
-
+echo $TSHRDLU_DIR
 if [ -z $JAVA_MEM_FLAG ] 
 then
     JAVA_MEM_FLAG=-Xmx6g
@@ -20,9 +20,10 @@ SCALA_LIB="$HOME/.sbt/boot/scala-2.10.1/lib/scala-library.jar"
 CP="$TSHRDLU_DIR/target/classes:$SCALA_LIB:$TSHRDLU_DIR/src/main/resources:$MANAGED_JARS:$UNMANAGED_JARS"
 
 JAVA="$JAVA_HOME/bin/java"
-JAVA_COMMAND="$JAVA -classpath $CP -Dtshrdlu.dir=$TSHRDLU_DIR"
+JAVA_COMMAND="$JAVA -Xmx512m -classpath $CP -Dtshrdlu.dir=$TSHRDLU_DIR"
 
 CMD=$1
+REST="${*:2}"
 shift
 
 help()
@@ -39,13 +40,14 @@ EOF
 CLASS=
 
 case $CMD in
+	exp) CLASS=tshrdlu.twitter.Sentimenter;shift; ;;
     bot) CLASS=tshrdlu.twitter.Bot; shift;;
     run) CLASS=$1; shift;;
     help) help; exit 1;;
     *) echo "Unrecognized command: $CMD"; help; exit 1;;
 esac
 
-$JAVA_COMMAND $CLASS ${1+"$@"} 
+$JAVA_COMMAND $CLASS $REST
 (( EXIT_CODE += $? ))
 
 exit $EXIT_CODE

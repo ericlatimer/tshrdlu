@@ -18,24 +18,6 @@ object Fancy {
 
   val wordlists = new WordLists
 
-  def apply(trainfile:String,evalfile:String,cost:Double,extended:Boolean,details:Boolean)  = {
-    //Digest training data
-    val trainXML = scala.xml.XML.loadFile(trainfile)
-    val allTrainingLabels = (trainXML \\ "item").map { item =>
-      ((item \ "@label").text)
-    }
-
-    val allTrainingTweets = (trainXML \\ "content").map{x => x.text}
-    val allTrainingPairs = allTrainingLabels.zip(allTrainingTweets).filter(x=>List("fresh","rotten","none").contains(x._1))
-
-    //Digest eval data
-    val evalXML = scala.xml.XML.loadFile(evalfile)
-    val allEvalLabels = (evalXML \\ "item").map { item =>
-      ((item \ "@label").text)
-    }
-    val allEvalTweets = (evalXML \\ "content").map{x => x.text}
-    val allEvalPairs = allEvalLabels.zip(allEvalTweets).filter(x=>List("fresh","rotten","none").contains(x._1))
-
     // A function (with supporting regex) that reads the format of the PPA 
     // files and turns them into Examples. E.g. a line like:
     //   0 join board as director V
@@ -46,6 +28,16 @@ object Fancy {
     def readRaw(traininPairs: Seq[(String,String)]) = 
       for (pair <- traininPairs)
         yield Example(pair._1, pair._2)
+
+  def getClassifier(trainfile:String,cost:Double,extended:Boolean) : nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String] = {
+    //Digest training data
+    val trainXML = scala.xml.XML.loadFile(trainfile)
+    val allTrainingLabels = (trainXML \\ "item").map { item =>
+      ((item \ "@label").text)
+    }
+
+    val allTrainingTweets = (trainXML \\ "content").map{x => x.text}
+    val allTrainingPairs = allTrainingLabels.zip(allTrainingTweets).filter(x=>List("fresh","rotten","none","positive","negative","neutral").contains(x._1))
 
     // A featurizer that simply splits the raw inputs 
     // and attaches each token to "word" (Bag of Words)
@@ -78,10 +70,10 @@ object Fancy {
    // A featurizer that extracts all bigrams from the input and
    // attaches each to "bigram"
    val featurizerBigrams = new Featurizer[String,String] {
-  	def apply(input: String) = {
-  	   val tokens = Twokenize(input).toList.sliding(2).toList
+    def apply(input: String) = {
+       val tokens = Twokenize(input).toList.sliding(2).toList
             tokens.map{bigram => FeatureObservation("bigram"+"="+bigram)}
-  	}
+    }
   }
   
    // A featurizer that splits/tokenizes the raw inputs, lowercases each,
@@ -95,7 +87,7 @@ object Fancy {
               val sentiments = tokens.map{token => getPolarity(token)}
               val tokenSentiments = tokens.zip(sentiments)
               val firstFeatures = tokenSentiments.map{pair => 
-              	List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+                List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
          val bigrams = Twokenize(input).map(_.toLowerCase).toList.sliding(2).toList
               val secondFeatures = bigrams.map{bigram => FeatureObservation("bigram"+"="+bigram)}
          firstFeatures ++ secondFeatures
@@ -154,12 +146,25 @@ object Fancy {
     // Get the training examples in their raw format.  
     val rawExamples = readRaw(allTrainingPairs).toList
     //println("rawExamples: " + rawExamples.head)
-    
+    println("Done converting training to raw format at time: " + java.lang.System.currentTimeMillis())
+
     // Configure and train with liblinear. Here we use the (default) L2-Regularized 
     // Logistic Regression classifier with a C value of .5. 
     val config = new LiblinearConfig(cost=cost)
     val classifier = trainClassifier(config, if (extended) featurizerall else featurizer, rawExamples)
-    
+    println("Done setting up classifier at time: " + java.lang.System.currentTimeMillis())
+    classifier
+  }
+
+  def apply(classifier:nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String],evalfile:String,details:Boolean)  = {
+    //Digest eval data
+    val evalXML = scala.xml.XML.loadFile(evalfile)
+    val allEvalLabels = (evalXML \\ "item").map { item =>
+      ((item \ "@label").text)
+    }
+    val allEvalTweets = (evalXML \\ "content").map{x => x.text}
+    val allEvalPairs = allEvalLabels.zip(allEvalTweets).filter(x=>List("fresh","rotten","none","positive","negative","neutral").contains(x._1))
+
     // Partially apply the labels to the curried 2-arg NakContext.maxLabel function 
     // to create the 1-arg maxLabelPpa function to get the best label for each example.
     def maxLabelPpa = maxLabel(classifier.labels) _
@@ -169,6 +174,7 @@ object Fancy {
     val comparisons = for (ex <- readRaw(allEvalPairs).toList) yield 
       (ex.label, maxLabelPpa(classifier.evalRaw(ex.features)), ex.features)
 
+    println("Done making comparisons at time: " + java.lang.System.currentTimeMillis())
     // Compute and print out the confusion matrix based on the comparisons 
     // obtained above.
     val (goldLabels, predictions, inputs) = comparisons.unzip3

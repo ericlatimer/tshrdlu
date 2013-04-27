@@ -9,7 +9,25 @@ import java.io.DataOutputStream
 import scala.io.Source
 import java.io.File
 
-case class Person(firstName: String, lastName: String, age: Int)
+object SentimenterOpts {
+
+  import org.rogach.scallop._
+  
+  def apply(args: Array[String]) = new ScallopConf(args) {
+    banner("""
+For usage see below:
+	     """)
+	val cost = opt[Double]("cost", short = 'c', default=Some(1.0), descr = "The cost parameter C.")
+	val detailed = opt[Boolean]("detailed", short = 'd', descr = "Should output the correctly and incorrectly results please.")
+	val eval = opt[List[String]]("eval", short = 'e', descr = "The files containing evalualation events.")
+	val extended = opt[Boolean]("extended", short = 'x', default=Some(false), descr = "Use extended features.")
+	val method = opt[String]("method", short = 'm', default=Some("L2R_LR"), descr = "The type of solver to use. Possible values: majority, lexicon, or any liblinear solver type.")
+	val train = opt[List[String]]("train", short = 't', descr = "The files containing training events.")
+	val verbose = opt[Boolean]("verbose", short = 'v', default=Some(false), descr = "Use extended features.")
+	val help = opt[Boolean]("help", noshort = true, descr = "Show this message.")
+	val version = opt[Boolean]("version", noshort = true, default=Some(false), descr = "Show version of this program.")
+  }
+}
 
 object Sentimenter {
 
@@ -17,8 +35,31 @@ object Sentimenter {
 		//val polarities = getPolarity(args)
 		//val tweetsAndPolarities = args.zip(polarities)
 		//tweetsAndPolarities.foreach(println)
-
 		//println("shortened url: " + shortenURL("http://goooooooooooooooooooooooogle.com"))
+
+		val opts = SentimenterOpts(args)
+
+		if (opts.version()) {
+		println("(ELAF) Sentimenter Version 0.1.1")
+		System.exit(0)
+		}
+
+		if (opts.verbose())
+		println("Verbose mode enabled.")
+
+		val trainFile = if (opts.train().length == 1) opts.train().head 
+			else getSingleFile(opts.train(),"trainFile.xml")
+		val evalFile = if (opts.eval().length == 1) opts.eval().head 
+			else getSingleFile(opts.eval(),"evalFile.xml")					
+
+		if (opts.method() == "majority") {
+			//Majority(trainFile, evalFile, opts.detailed())
+		} else if (opts.method() == "lexicon") {
+			//Lexicon(evalFile, opts.detailed())
+		} else {
+			val classifier = Fancy.getClassifier(trainFile, opts.cost(), opts.extended())
+    		Fancy(classifier, evalFile, opts.detailed())
+		}
   	}
 
 	def getOldPolarity(args: Array[String]) = {
@@ -90,6 +131,25 @@ object Sentimenter {
 				None
 		}
 		keys.filterNot(k => k == None)(0)
+	}
+
+	// If multiple files are specified for training and/or evaluation data, create a single file in
+  	// the appropriate XML format.  
+	def getSingleFile(fileList:List[String],fileName:String) = {
+		val out = new java.io.FileWriter(fileName)
+		out.write("<?xml version=\"1.0\"?>\n")
+		out.write("<dataset>\n")
+		for (file <- fileList) {
+			val lines = scala.io.Source.fromFile(file).getLines
+			for (line <- lines) {
+				if (!line.startsWith("<?xml version") && !line.startsWith("<dataset") && !line.startsWith("</dataset"))
+					out.write(line+"\n")			
+			}
+		}
+		out.write("</dataset>")
+		out.close
+
+		fileName
 	}
 }
 

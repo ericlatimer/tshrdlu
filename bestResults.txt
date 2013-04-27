@@ -1,0 +1,23 @@
+tshrdlu::>bin/tshrdlu exp -t reviews/IHope-Lethal.xml reviews/Living-School.xml reviews/SOS-Suddenly.xml reviews/Bill-IHeart.xml popular.xml -e reviews/allReviews.xml -x
+/Users/eric/Dropbox/CS395T-ANLP/tshrdlu
+--------------------------------------------------------------------------------
+Confusion matrix.
+Columns give predicted counts. Rows give gold counts.
+--------------------------------------------------------------------------------
+3206	0	804	|	4010	fresh
+7	0	1	|	8	none
+977	0	2535	|	3512	rotten
+-----------------------------
+4190	0	3340
+fresh none rotten
+
+--------------------------------------------------------------------------------
+		76.24	Overall accuracy
+--------------------------------------------------------------------------------
+P	R	F
+76.52	79.95	78.20	fresh
+0.00	0.00	0.00	none
+75.90	72.18	73.99	rotten
+...................................
+50.80	50.71	50.73	Average
+tshrdlu::>bin/tshrdlu exp -t rev

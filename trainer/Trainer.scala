@@ -1,11 +1,11 @@
-
+import java.io.File
 import scala.io.Source
 
     // Regular expression used to extract ratings (freshness), reviews (quote), and links from Rotten Tomatoes search results 
     val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]+","quote":"([\sA-Za-z\W',\.]+)","links":\{("review":")?([^"]+)"?\}""".r
 
         // Read in list of valid movies from the movies.txt file, converting to lower case and removing non-alphanumeric characters
-        val moviesList = scala.io.Source.fromFile("movies.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]","")).filter(_.length > 0)
+        val moviesList = scala.io.Source.fromFile("movies/moviesSuds.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]","")).filter(_.length > 0)
 
         //val out = new java.io.FileWriter("bunchOfReviews.xml")
         println("<?xml version=\"1.0\"?>\n")
@@ -36,13 +36,14 @@ import scala.io.Source
   def getReviews(searchTerm: String ): String = {
     
         val ReviewLinkRE = """reviews":"([^"]*)"""".r
-        
-        val api_key="mp842nfgxevjq6wma6rh7m9k"       
+             
+        val file = new File("rottentomatoes.properties")
+        val api_key = getProperty(file,"apiKey")
         val html = Source.fromURL("http://api.rottentomatoes.com/api/public/v1.0/movies.json?apikey="+ api_key + "&q=" + searchTerm + "&page_limit=1")
      
         val s = html.mkString
         val matchedData = ReviewLinkRE.findAllIn(s).matchData
-        if (matchedData.length > 0) {
+        if (matchedData.hasNext) {
             val reviewLink = matchedData.next.group(1)
             val htmlReview  = Source.fromURL(reviewLink+"?apikey="+api_key)
     htmlReview.mkString
@@ -50,5 +51,15 @@ import scala.io.Source
         else
             "none"
   }   
-
+    def getProperty(file :File, property :String) = {
+        val creds = Source.fromFile(file).getLines.toList
+        val keys = for (line <- creds) yield {
+            val split = line.split("=")
+            if (split(0) == property)
+                split(1)
+            else
+                None
+        }
+        keys.filterNot(k => k == None)(0)
+    }
 

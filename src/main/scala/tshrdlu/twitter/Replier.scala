@@ -74,6 +74,8 @@ class SentimentReplier extends BaseReplier {
   implicit val timeout = Timeout(10 seconds)
   import chalk.lang.eng.Twokenize
 
+  var classifierOption: Option[nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String] ] = None
+
   //Class copied from previous Project Phase to extract just text from tweet string
   class TweetString(s: String) {
   	def dropUpto(attr: String, extra: Int = 4) = {
@@ -86,13 +88,13 @@ class SentimentReplier extends BaseReplier {
 
   //Function to get a Sequence of all tweets of the current year of the provided twitter username 
   def getPrevTweets(name: String) :Seq[String] =  {
-	implicit def stringToTweetString(s: String) = new TweetString(s)
+  	implicit def stringToTweetString(s: String) = new TweetString(s)
 
-	val link = "https://api.twitter.com/1/statuses/user_timeline.json?include_entities=true&inc%E2%80%8C%E2%80%8Blude_rts=true&screen_name="+name+"&since:2013-01-01&until:2014-04-07"
+  	val link = "https://api.twitter.com/1/statuses/user_timeline.json?include_entities=true&inc%E2%80%8C%E2%80%8Blude_rts=true&screen_name="+name+"&since:2013-01-01&until:2014-04-07"
 
-	val splitTweets = scala.io.Source.fromURL(link).mkString.trim.split("\\},\\{").toList
-	val tweets = splitTweets.map{x => "{"+x+"}"}
-	for (tweet <- tweets) yield stringToTweetString(tweet).getText("text")
+  	val splitTweets = scala.io.Source.fromURL(link).mkString.trim.split("\\},\\{").toList
+  	val tweets = splitTweets.map{x => "{"+x+"}"}
+  	for (tweet <- tweets) yield stringToTweetString(tweet).getText("text")
   }
 
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
@@ -104,9 +106,9 @@ class SentimentReplier extends BaseReplier {
 
     // Get list of all previous tweets of the bot -- to prevent retweeting same review
     val prevTweets = getPrevTweets("eric_anlp").filter(t => getLeadMention(t) == username).map{t => stripLeadMention(t.substring(0, 
-								if (t.indexOf(" http") > 0)
-								   t.indexOf(" http")
-								else t.length))}
+                if (t.indexOf(" http") > 0)
+                   t.indexOf(" http")
+                else t.length))}
 	
     // Regular expression used to extract ratings (freshness), reviews (quote), and links from Rotten Tomatoes search results 
     val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]+","quote":"([\sA-Za-z\W',\.]+)","links":\{("review":")?([^"]+)"?\}""".r
@@ -149,6 +151,7 @@ class SentimentReplier extends BaseReplier {
 	val score_quote = score_quote_link.map(sql => {
 					(sql._1,sql._2 + " " + Sentimenter.shortenURL(sql._3))})
 
+  println("Done shortening URLs")
 	// Get separate lists of reviews+links corresponding to each polarity
 	val (_,freshRev) = score_quote.filter(sq => sq._1 == "fresh").unzip
 	val (_,rottenRev) = score_quote.filter(sq => sq._1 == "rotten").unzip
@@ -162,6 +165,7 @@ class SentimentReplier extends BaseReplier {
 	val rottenCount = rottenReviews.map(_.filter(_.length>1))
 	val neutralCount = neutralReviews.map(_.filter(_.length>1))
 
+  println("Done filtering and mapping")
 	// If negative polarity, first try to respond with a "rotten" review
 	if(polarity == "rotten"){
 		if(!rottenCount.isEmpty)
@@ -286,10 +290,10 @@ class SentimentReplier extends BaseReplier {
 
     val totalReviews = TotalRE.findAllIn(s).matchData.next.group(1)
 
-    println("term: " + term)
+    //println("term: " + term)
     val reviewLink = if ( totalReviews != "1"){
       val allMatches = {for { TitleRE(title,_,rev) <- TitleRE findAllIn s} yield (title.toLowerCase,rev)}.toList.toMap
-      println("allMatches: " + allMatches)
+      //println("allMatches: " + allMatches)
       if(allMatches.keys.toList.contains(searchTerm))
         allMatches(searchTerm)
       else
@@ -307,7 +311,11 @@ class SentimentReplier extends BaseReplier {
    */
   def getPolarity(tweetStr: String): String = {
     Sentimenter.generateTweetXMLFile(tweetStr)
-    Fancy("allReviews.xml", "tweet.xml", 0.5, true, false)
+    if (classifierOption == None) {
+      classifierOption = Some(Fancy.getClassifier("bestTraining.xml", 0.5, true))
+    }
+
+    Fancy(classifierOption.get, "tweet.xml", false)
   }
 
   def getText(status: Status): Option[String] = {
