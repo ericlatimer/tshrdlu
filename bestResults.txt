@@ -1,3 +1,89 @@
+NEW (after merging debate08/train.xml and adding not to tokenizer)
+
+tshrdlu::>bin/tshrdlu exp -t bestTraining.xml -e trainingDatas/allReviews.xml -x
+/Users/eric/Dropbox/CS395T-ANLP/tshrdlu
+Done converting training to raw format at time: 1367104675986
+Done setting up classifier at time: 1367104706137
+Done making comparisons at time: 1367104709792
+--------------------------------------------------------------------------------
+Confusion matrix.
+Columns give predicted counts. Rows give gold counts.
+--------------------------------------------------------------------------------
+3265	0	745	|	4010	fresh
+7	0	1	|	8	none
+882	0	2630	|	3512	rotten
+-----------------------------
+4154	0	3376
+fresh none rotten
+
+--------------------------------------------------------------------------------
+		78.29	Overall accuracy
+--------------------------------------------------------------------------------
+P	R	F
+78.60	81.42	79.99	fresh
+0.00	0.00	0.00	none
+77.90	74.89	76.36	rotten
+...................................
+52.17	52.10	52.12	Average
+
+
+tshrdlu::>bin/tshrdlu exp -t bestTraining.xml data/debate08/train.xml -e trainingDatas/allReviews.xml -x
+/Users/eric/Dropbox/CS395T-ANLP/tshrdlu
+Done converting training to raw format at time: 1367100480183
+Done setting up classifier at time: 1367100508840
+Done making comparisons at time: 1367100512349
+--------------------------------------------------------------------------------
+Confusion matrix.
+Columns give predicted counts. Rows give gold counts.
+--------------------------------------------------------------------------------
+3268	0	742	|	4010	fresh
+7	0	1	|	8	none
+886	0	2626	|	3512	rotten
+-----------------------------
+4161	0	3369
+fresh none rotten
+
+--------------------------------------------------------------------------------
+		78.27	Overall accuracy
+--------------------------------------------------------------------------------
+P	R	F
+78.54	81.50	79.99	fresh
+0.00	0.00	0.00	none
+77.95	74.77	76.33	rotten
+...................................
+52.16	52.09	52.11	Average
+
+NEW:
+
+^Ctshrdlu:bin/tshrdlu exp -t bestTraining.xml -e trainingDatas/allReviews.xml -x
+/Users/eric/Dropbox/CS395T-ANLP/tshrdlu
+Done converting training to raw format at time: 1367100392006
+Done setting up classifier at time: 1367100421078
+Done making comparisons at time: 1367100424814
+--------------------------------------------------------------------------------
+Confusion matrix.
+Columns give predicted counts. Rows give gold counts.
+--------------------------------------------------------------------------------
+3260	0	750	|	4010	fresh
+7	0	1	|	8	none
+889	0	2623	|	3512	rotten
+-----------------------------
+4156	0	3374
+fresh none rotten
+
+--------------------------------------------------------------------------------
+		78.13	Overall accuracy
+--------------------------------------------------------------------------------
+P	R	F
+78.44	81.30	79.84	fresh
+0.00	0.00	0.00	none
+77.74	74.69	76.18	rotten
+...................................
+52.06	51.99	52.01	Average
+
+
+OLD (with removing stop words)
+
 tshrdlu::>bin/tshrdlu exp -t reviews/IHope-Lethal.xml reviews/Living-School.xml reviews/SOS-Suddenly.xml reviews/Bill-IHeart.xml popular.xml -e reviews/allReviews.xml -x
 /Users/eric/Dropbox/CS395T-ANLP/tshrdlu
 --------------------------------------------------------------------------------

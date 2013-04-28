@@ -109,8 +109,12 @@ object Fancy {
     // and attaches the remaining words to "word" (Bag of Words)
     val featurizerall = new Featurizer[String,String] {
       def apply(input: String) = {
-        val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
-        val sentiments = tokens.map{token => getPolarity(token)}
+        val tokens = Twokenize(input).map(_.toLowerCase)//.filterNot(wordlists.stopwords)
+        val trigrams = (List("start1", "start2") ++ tokens).toList.sliding(3).toList
+        //trigrams.foreach(println)
+        val tokensAndItsPrev2 = tokens.zip(trigrams)
+        //tokensAndItsPrev2.foreach(println)
+        val sentiments = tokensAndItsPrev2.map{tokenAndPrev2 => getPolarity(tokenAndPrev2)}
         val tokenSentiments = tokens.zip(sentiments)
         tokenSentiments.map{pair => 
           List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
@@ -179,9 +183,11 @@ object Fancy {
     // obtained above.
     val (goldLabels, predictions, inputs) = comparisons.unzip3
     val cm = ConfusionMatrix(goldLabels, predictions, inputs)
-    //println(cm)
-    if (details)
+    
+    println(cm)
+    if (details) {
       println(cm.detailedOutput)
+    }
     //println(predictions.head)
     predictions.head
   }
@@ -194,6 +200,31 @@ object Fancy {
   def getPolarity(token: String) = {
   if (wordlists.posWords.contains(token)) 1 
     else if (wordlists.negWords.contains(token)) -1
+    else 0
+  }
+
+  def negationWords = List("not")
+
+  def getPolarity(tokenAndPrev2: (String,List[String])) = {
+    val token = tokenAndPrev2._1
+    val trigram = tokenAndPrev2._2
+
+    if (wordlists.posWords.contains(token)) {
+      if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) || trigram(0).endsWith("n't") || trigram(1).endsWith("n't")) {
+        //println("GOOOOOOOOOOOOOOOD Token: " + token)
+        //println("trigram(0): " + trigram(0))
+        //println("trigram(1): " + trigram(1))
+         -1
+      }
+      else
+        1
+    } 
+    else if (wordlists.negWords.contains(token)) {
+      if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) || trigram(0).endsWith("n't") || trigram(1).endsWith("n't"))
+        1
+      else
+        -1
+    }
     else 0
   }
 }
