@@ -8,7 +8,10 @@ import java.net.URL
 import java.io.DataOutputStream
 import scala.io.Source
 import java.io.File
-import java.io._
+import nak.NakContext._
+import nak.core._
+import nak.data._
+import nak.liblinear.{LiblinearConfig,Solver}
 
 object SentimenterOpts {
 
@@ -31,13 +34,6 @@ For usage see below:
 }
 
 object Sentimenter {
-
-	import scala.util.Marshal
-	import scala.collection.immutable
- 
-    class SerializableClassifier(classifierIn: nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String]) extends scala.Serializable {
-        val classifier = classifierIn
-    }
 
   	def main(args: Array[String]) {
 		//val polarities = getPolarity(args)
@@ -65,22 +61,11 @@ object Sentimenter {
 		} else if (opts.method() == "lexicon") {
 			//Lexicon(evalFile, opts.detailed())
 		} else {
-			//val classifierFile = new File("classifier")
-
-			val classifier = Fancy.getClassifier(trainFile, opts.cost(), opts.extended())
-			
-			/*
-			val serializableClassifier = new SerializableClassifier(classifier)
- 
-	        val out = new FileOutputStream("classifier")
-	        out.write(Marshal.dump(serializableClassifier))
-	        out.close
-	 
-	        val in = new FileInputStream("classifier")
-	        val bytes = Stream.continually(in.read).takeWhile(-1 !=).map(_.toByte).toArray
-	        val bar: SerializableClassifier = Marshal.load[SerializableClassifier](bytes)
-			*/
-			
+			val classifierFile = new File("classifier")
+			val classifier = if (classifierFile.exists) 
+								loadClassifier[FeaturizedClassifier[String,String]]("classifier")
+							 else
+								Fancy.getClassifier(trainFile, opts.cost(), opts.extended())
     		Fancy(classifier, evalFile, opts.detailed())
 		}
   	}

@@ -73,6 +73,10 @@ class SentimentReplier extends BaseReplier {
   import scala.concurrent.Future
   implicit val timeout = Timeout(10 seconds)
   import chalk.lang.eng.Twokenize
+  import nak.NakContext._
+  import nak.core._
+  import nak.data._
+  import nak.liblinear.{LiblinearConfig,Solver}
 
   var classifierOption: Option[nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String] ] = None
 
@@ -312,7 +316,12 @@ class SentimentReplier extends BaseReplier {
   def getPolarity(tweetStr: String): String = {
     Sentimenter.generateTweetXMLFile(tweetStr)
     if (classifierOption == None) {
-      classifierOption = Some(Fancy.getClassifier("bestTraining.xml", 0.5, true))
+      val classifierFile = new File("classifier")
+      if (classifierFile.exists) 
+                classifierOption = Some(loadClassifier[FeaturizedClassifier[String,String]]("classifier"))
+               else
+                classifierOption = Some(Fancy.getClassifier("bestTraining.xml", 0.5, true))
+      //classifierOption = Some(Fancy.getClassifier("bestTraining.xml", 0.5, true))
     }
 
     Fancy(classifierOption.get, "tweet.xml", false)

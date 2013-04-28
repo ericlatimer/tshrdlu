@@ -156,6 +156,7 @@ object Fancy {
     // Logistic Regression classifier with a C value of .5. 
     val config = new LiblinearConfig(cost=cost)
     val classifier = trainClassifier(config, if (extended) featurizerall else featurizer, rawExamples)
+    saveClassifier(classifier, "classifier")
     println("Done setting up classifier at time: " + java.lang.System.currentTimeMillis())
     classifier
   }

@@ -17,7 +17,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalanlp" % "nak" % "1.1.2",
+  "org.scalanlp" % "nak" % "1.1.3-SNAPSHOT",
   "org.scalanlp" % "chalk" % "1.1.3-SNAPSHOT",
   "org.twitter4j" % "twitter4j-core" % "3.0.3",
   "org.twitter4j" % "twitter4j-stream" % "3.0.3",
