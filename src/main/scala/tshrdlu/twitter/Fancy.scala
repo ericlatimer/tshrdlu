@@ -37,7 +37,7 @@ object Fancy {
     }
 
     val allTrainingTweets = (trainXML \\ "content").map{x => x.text}
-    val allTrainingPairs = allTrainingLabels.zip(allTrainingTweets).filter(x=>List("fresh","rotten","none","positive","negative","neutral").contains(x._1))
+    val allTrainingPairs = allTrainingLabels.zip(allTrainingTweets).filter(x=>List("fresh","rotten").contains(x._1))
 
     // A featurizer that simply splits the raw inputs 
     // and attaches each token to "word" (Bag of Words)
@@ -168,7 +168,7 @@ object Fancy {
       ((item \ "@label").text)
     }
     val allEvalTweets = (evalXML \\ "content").map{x => x.text}
-    val allEvalPairs = allEvalLabels.zip(allEvalTweets).filter(x=>List("fresh","rotten","none","positive","negative","neutral").contains(x._1))
+    val allEvalPairs = allEvalLabels.zip(allEvalTweets).filter(x=>List("fresh","rotten").contains(x._1))
 
     // Partially apply the labels to the curried 2-arg NakContext.maxLabel function 
     // to create the 1-arg maxLabelPpa function to get the best label for each example.
@@ -211,7 +211,9 @@ object Fancy {
     val trigram = tokenAndPrev2._2
 
     if (wordlists.posWords.contains(token)) {
-      if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) || trigram(0).endsWith("n't") || trigram(1).endsWith("n't")) {
+      if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) 
+        || trigram(0).endsWith("n't") || trigram(1).endsWith("n't")
+        || trigram(0).endsWith("nt") || trigram(1).endsWith("nt")) {
         //println("GOOOOOOOOOOOOOOOD Token: " + token)
         //println("trigram(0): " + trigram(0))
         //println("trigram(1): " + trigram(1))
@@ -221,7 +223,9 @@ object Fancy {
         1
     } 
     else if (wordlists.negWords.contains(token)) {
-      if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) || trigram(0).endsWith("n't") || trigram(1).endsWith("n't"))
+      if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) 
+        || trigram(0).endsWith("n't") || trigram(1).endsWith("n't")
+        || trigram(0).endsWith("nt") || trigram(1).endsWith("nt"))
         1
       else
         -1

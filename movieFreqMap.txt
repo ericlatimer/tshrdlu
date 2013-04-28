@@ -1,0 +1,677 @@
+10,1748
+12,149
+15 minutes,5
+2010,3
+21,109
+300,42
+42,5
+54,2
+8,134
+9,89
+a,3780
+abel,7
+accepted,16
+accident,6
+accused,4
+a christmas carol,4
+action,74
+adam,19
+airport,10
+alaska,1
+albuquerque,6
+alexander,2
+alone,3
+always,63
+amelia,1
+america,140
+among those present,4
+amour,4
+amy,6
+andre,4
+angel,69
+angie,13
+anna,3
+anonymous,2
+any day now,4
+anything else,8
+apache,4
+arbitrage,2
+aria,4
+arizona,6
+arthur,4
+atlantic,3
+atlantic city,2
+attack,4
+august,33
+australia,9
+awake,6
+babies,8
+bambi,2
+basic,10
+beat,9
+beautiful,7
+because of you,4
+beloved,2
+ben,44
+bianca,8
+big,60
+bird,14
+blink,2
+blow,2
+bolt,2
+bone,4
+border,7
+bounce,3
+bound,2
+boy,1
+brain candy,4
+brazil,1
+breach,6
+breakout,17
+breakthrough,1
+brothers,4
+buck,1
+buddy,6
+bug,4
+bulletproof,2
+butterfly,4
+cal,4
+call me,56
+camille,3
+candy,4
+career,5
+careful,4
+carlos,33
+carnage,4
+carrie,4
+cars,4
+cash,71
+caught,4
+cline,2
+cellular,9
+character,6
+charlotte,1
+chicago,20
+china,22
+christine,3
+cinderella,2
+clarence,1
+class,76
+class action,18
+click,166
+clifford,3
+closer,4
+clue,2
+coast to coast,2
+cobb,3
+cocktail,6
+collateral,4
+collateral damage,4
+college,6
+colors,2
+compliance,39
+confidence,3
+conflict,5
+congo,4
+contact,239
+convicted,4
+conviction,4
+country,13
+creature,1
+criminal,2
+criminal law,2
+crisis,20
+cromwell,4
+crude,23
+cube,2
+da,8
+dad,6
+dallas,7
+damage,14
+dangerous,1
+daniel,9
+daryl,1
+dave,65
+david,147
+dawn,23
+daylight,6
+deadline,24
+desire,6
+diamonds,4
+diane,37
+dick,3
+disclosure,15
+doc,1
+don,28
+doom,2
+doubt,8
+downtown,6
+dreams,4
+drive,6
+due date,4
+dutch,1
+earth,2
+ed,23
+eddie,1
+eggs,2
+l,91
+election,34
+elf,2
+lisa,65
+elizabeth,20
+eminent domain,2
+emma,1
+emmanuelle,2
+empire,4
+enough,42
+escape,4
+eva,1
+eve,7
+evening,28
+evergreen,2
+experience,30
+exposed,8
+face,9
+faster,9
+father,1
+feds,4
+fighting,1
+fingers,3
+fire,10
+fire,10
+fired up,6
+firewall,2
+fireworks,2
+flame,1
+fletch,5
+flight,44
+fm,4
+folks,27
+forever,4
+for sale,2
+fox,11
+fracture,2
+fran,6
+freeway,1
+frequency,16
+fresh,22
+friday,157
+frozen,3
+fx,15
+games,17
+gas,480
+genesis,3
+georgia,1
+get real,8
+giant,5
+gloria,16
+glory,4
+go,178
+goal,16
+gold,6
+gone,20
+good morning,3
+good news,8
+gossip,2
+grace,6
+greed,4
+greenberg,3
+growing up,2
+guess who,2
+guide,8
+h,41
+halloween,5
+happy new year,4
+harper,4
+harvey,6
+hawks,2
+head,17
+health,29
+heat,8
+heavy,7
+heidi,19
+help,177
+hero,2
+hitchcock,4
+holiday,56
+homecoming,4
+hopscotch,1
+hotel,25
+house,45
+how to deal,7
+husbands,2
+id,80
+identity,14
+if,1169
+i love you,6
+images,2
+imagine that,6
+impact,67
+inception,11
+indian,23
+infinity,2
+in society,2
+interface,3
+interval,6
+in the money,1
+in time,6
+it,1191
+ivan,2
+i want you,2
+jack,7
+jeffrey,53
+jennifer,56
+jeremy,5
+jessica,10
+jesus,2
+joe,43
+joseph,27
+judith,6
+juice,1
+julia,7
+julie,39
+junior,4
+juno,9
+just around the corner,4
+kansas,26
+kansas city,3
+kathleen,3
+kenny,1
+kentucky,7
+kids,16
+kill,3
+killer,1
+kim,72
+kitchen,26
+knowing,3
+last night,23
+last summer,2
+laura,23
+lawless,2
+leader,10
+lolo,3
+life,18
+lightning,4
+linda,25
+link,37
+lisa,65
+lone star,4
+loop,4
+loophole,6
+love,64
+lovers,2
+love stinks,2
+m,103
+magic,9
+malcolm,6
+management,158
+manhattan,1
+man in the moon,4
+margaret,1
+marie,18
+marley,2
+marnie,8
+martin,27
+marty,11
+metro,3
+metropolis,2
+michael,87
+milk,4
+missing,17
+mississippi,10
+mitchell,1
+mom and dad,4
+monster,6
+montana,6
+moon,4
+morgan,5
+most wanted,8
+mother,9
+move,48
+moving,37
+mumford,2
+munich,4
+murder,2
+music box,2
+my family,2
+my friends,1
+nashville,3
+network,62
+nevada,8
+new delhi,2
+new mexico,1
+next,216
+next friday,2
+niagara,2
+nine,12
+nixon,8
+n,36
+north,170
+northwest passage,2
+nuts,2
+o,35
+obsessed,4
+oceans,4
+office space,4
+ok,50
+oklahoma,5
+oliver,5
+on approval,2
+one day,5
+one more time,2
+only you,2
+on the town,4
+on top,8
+open season,4
+orlando,5
+oscar,2
+paradise,1
+parents,9
+paris,6
+parker,4
+parrish,2
+partners,34
+party girl,1
+passed away,2
+passenger,2
+patterns,6
+paul,121
+paycheck,4
+perfect,4
+performance,100
+phantom,4
+philadelphia,6
+picnic,4
+pittsburgh,20
+planes,4
+please give,14
+plenty,2
+polyester,24
+possession,7
+power,546
+precious,2
+prime,2
+privilege,4
+privileged,38
+professor,4
+prometheus,1
+protocol,10
+providence,2
+pulp,16
+pulse,4
+pulse,4
+push,7
+q,3
+quicksilver,4
+radio,4
+rage,6
+raging bull,12
+rain,9
+ran,4
+ray,29
+rebecca,16
+rebound,3
+red,23
+redhead,1
+redline,2
+reds,4
+remember,22
+rent,9
+restaurant,18
+return to me,2
+reunion,2
+rio,4
+rollover,4
+roots,2
+rosetta,1
+rotation,5
+ruby,1
+rudy,5
+run,58
+runaway,4
+running,14
+rush,10
+safe,9
+sally,30
+salt,1
+samantha,10
+san antonio,3
+sandra,18
+san francisco,17
+santa,26
+saturday night,9
+saw,30
+scream,2
+screwed,1
+seconds,1
+secretariat,1
+secrets,3
+seema,2
+september,34
+serial,4
+sex,5
+she,119
+shivers,2
+shock,3
+shooting stars,4
+shopping,28
+shorts,1
+shout,4
+side effects,4
+sideways,6
+sierra,10
+simon,2
+sisters,2
+slaughter,1
+sleep,5
+sleuth,60
+slim,2
+smashed,2
+smoke,2
+society,2
+somewhere,2
+songwriter,2
+south of the border,2
+space cowboys,2
+speed,17
+speedway,1
+speedy,1
+split,26
+spread,9
+stakeout,20
+star,4
+stars,6
+station,37
+stay,36
+stay tuned,1
+stella,4
+step up,1
+stevie,4
+stick,3
+stone,2
+storm,10
+straight time,4
+strike,2
+sunday,26
+sunset,2
+sunshine,1
+surveillance,8
+susana,1
+suspect,6
+sweeney,1
+sweetie,1
+swing vote,4
+switch,22
+sylvia,6
+taken,42
+tank,16
+tap,2
+target,8
+targets,5
+teachers,2
+ted,22
+testimony,10
+the agency,9
+the american,2
+the animal,1
+the arrangement,4
+the arrival,2
+the artist,2
+the assignment,3
+the associate,8
+the beach,2
+the birds,2
+the birthday party,1
+the body,5
+the border,3
+the boss,1
+the boys,1
+the bridge,4
+the caddy,1
+the call,17
+the candidate,2
+the car,1
+the chairman,47
+the children,10
+the class,16
+the clock,2
+the club,6
+the competition,16
+the contact,8
+the conversation,2
+the core,4
+the cross,2
+the curve,3
+the day after,6
+the days,5
+the debt,2
+the devils,2
+the doctor,5
+the end,53
+the entity,11
+the fall,1
+the field,14
+the firm,8
+the flight,2
+the four seasons,2
+the front,7
+the funeral,2
+the game,11
+the games,1
+the garage,3
+the garden,1
+the general,20
+the group,15
+the hand,1
+the help,10
+the holiday,8
+the house,20
+the hunt,1
+the image,2
+the international,10
+the interview,10
+the journey,4
+the key,24
+the land,17
+the letter,13
+them,216
+the man,10
+the master,10
+the messenger,1
+the morning after,5
+the net,10
+the new world,2
+the one,17
+the only way,5
+the order,33
+the other,38
+the other guys,1
+the others,2
+the paper,7
+the party,6
+the passenger,1
+the penalty,2
+the perfect storm,4
+the power,41
+the principal,4
+the prize,4
+the professional,4
+the program,32
+the promise,1
+the proposal,2
+the reader,4
+the report,4
+the road,4
+the scout,4
+the search,8
+the sender,28
+these three,1
+the sixth,1
+the spirit,6
+the super,4
+the system,19
+the thief,1
+the town,4
+the trip,4
+the truth,2
+the village,4
+the way,29
+the way back,1
+the web,38
+the wedding,4
+the wind,3
+the words,2
+they,569
+thief,1
+thieves,2
+things change,1
+three weeks,8
+threshold,11
+tim,37
+timeline,10
+to fly,6
+tokyo,20
+to live,8
+tomorrow,70
+touch,7
+toys,18
+tracks,6
+trapeze,4
+trapped,1
+trial,6
+trick,1
+troy,1
+tudor,8
+tulsa,1
+uncertainty,4
+under fire,10
+up,436
+valentines day,4
+virginia,8
+virus,2
+w,100
+waco,4
+waiting,9
+walker,6
+wall street,8
+wanted,79
+war,5
+water,66
+we,1520
+western,44
+whipped,2
+whirlpool,2
+why,53
+wide awake,2
+wildcats,2
+will,1939
+willard,2
+wilson,10
+wind,10
+windows,12
+wine,1
+winning,10
+witness,2
+yanks,2
+you again,8
+z,18

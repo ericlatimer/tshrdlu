@@ -43,9 +43,6 @@
 <item label="fresh">
 <content>It was great</content>
 </item>
-<item label="fresh">
-<content>I did like it</content>
-</item>
 <item label="rotten">
 <content>I did not like it</content>
 </item>
