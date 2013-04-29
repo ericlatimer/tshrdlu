@@ -108,7 +108,8 @@ class SentimentReplier extends BaseReplier {
     val username = status.getUser().getScreenName()
 
     // Get list of all previous tweets of the bot -- to prevent retweeting same review
-    val prevTweets = getPrevTweets("eric_anlp").filter(t => getLeadMention(t) == username).map{t => stripLeadMention(t.substring(0, 
+    val myName = new TwitterStreamFactory().getInstance.getScreenName;
+    val prevTweets = getPrevTweets(myName).filter(t => getLeadMention(t) == username).map{t => stripLeadMention(t.substring(0, 
                 if (t.indexOf(" http") > 0)
                    t.indexOf(" http")
                 else t.length))}
@@ -317,7 +318,7 @@ class SentimentReplier extends BaseReplier {
         ReviewLinkRE.findAllIn(s).matchData.next.group(1)
 
     val revs = for (page <- 1 to 5) yield {
-     Source.fromURL(reviewLink+"?apikey="+api_key+"&review_type=all&page_limit=50&page="+page).mkString     
+     Source.fromURL(reviewLink+"?apikey="+api_key+"&review_type=all&page_limit=10&page="+page).mkString     
     }
       revs.mkString(" ")
   }
