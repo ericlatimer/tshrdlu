@@ -119,6 +119,8 @@ class ReplierManager extends Actor with ActorLogging {
   import scala.concurrent.duration._
   import scala.concurrent.Future
   import scala.util.{Success,Failure}
+  import TwitterRegex._
+
   implicit val timeout = Timeout(30 seconds)
 
   lazy val random = new scala.util.Random
@@ -145,8 +147,10 @@ class ReplierManager extends Actor with ActorLogging {
           randomFillerStatus(status)
       }
 
-      futureUpdate.foreach(context.parent ! UpdateStatus(_))
-    
+      val stripped = stripLeadMention(status.getText).toLowerCase.trim.replaceAll("[^A-Za-z0-9 ]","")
+      println(stripped)
+      if (stripped != "thanks")
+        futureUpdate.foreach(context.parent ! UpdateStatus(_))
   }
 
   lazy val fillerStatusMessages = Vector(

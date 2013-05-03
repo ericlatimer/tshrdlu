@@ -141,8 +141,7 @@ object Sentimenter {
 		keys.filterNot(k => k == None)(0)
 	}
 
-	// If multiple files are specified for training and/or evaluation data, create a single file in
-  	// the appropriate XML format.  
+	// If multiple files are specified for training and/or evaluation data, create a single file in the appropriate XML format.  
 	def getSingleFile(fileList:List[String],fileName:String) = {
 		val out = new java.io.FileWriter(fileName)
 		out.write("<?xml version=\"1.0\"?>\n")
@@ -158,6 +157,26 @@ object Sentimenter {
 		out.close
 
 		fileName
+	}
+
+	def convertRatedTweetsTxt2XML(file: String, resultFile: String) {
+		val outFile = new java.io.File(resultFile)
+		val fw = new java.io.FileWriter(outFile.getName());
+	    val bw = new java.io.BufferedWriter(fw);
+
+        val tweets = scala.io.Source.fromFile(file).getLines.toList
+        	.map(line => {line.splitAt(line.indexOf(" "))})	
+
+        bw.write("<?xml version=\"1.0\"?>\n")
+        bw.write("<dataset>\n")
+        for (tweet <- tweets) {
+            println("tweet: " + tweet)
+            bw.write("""<item label=""""+tweet._1+"""">""")
+            bw.write("\n<content>"+tweet._2.trim+"</content>\n")
+            bw.write("</item>\n")
+        }           
+        bw.write("\n</dataset>")
+        bw.close();
 	}
 }
 

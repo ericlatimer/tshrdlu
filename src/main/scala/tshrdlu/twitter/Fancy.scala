@@ -29,6 +29,22 @@ object Fancy {
       for (pair <- traininPairs)
         yield Example(pair._1, pair._2)
 
+  def retrain(tweet: String, polarity:String, cost:Double,extended:Boolean) = {
+    val userTrainedFile = new java.io.File("userTraining.txt")
+    
+    val fw = new java.io.FileWriter(userTrainedFile.getName(),true);
+    val bw = new java.io.BufferedWriter(fw);
+    bw.write(polarity + " " + tweet+"\n");
+    bw.close();
+
+    Sentimenter.convertRatedTweetsTxt2XML("userTraining.txt", 
+                        "userTraining.xml")
+
+    Sentimenter.getSingleFile(List("trainingDatas/bestTraining.xml", "userTraining.xml"),
+      "trainingDatas/combinedData.xml")
+    getClassifier("trainingDatas/combinedData.xml",cost,extended)
+  }
+
   def getClassifier(trainfile:String,cost:Double,extended:Boolean) : nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String] = {
     //Digest training data
     val trainXML = scala.xml.XML.loadFile(trainfile)
