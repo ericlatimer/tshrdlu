@@ -121,6 +121,16 @@ object Fancy {
       }
     }
 
+    val featurizerallOld = new Featurizer[String,String] {
+      def apply(input: String) = {
+        val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
+        val sentiments = tokens.map{token => getPolarity(token)}
+        val tokenSentiments = tokens.zip(sentiments)
+        tokenSentiments.map{pair => 
+          List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+      }
+    }
+
     // A featurizer that tokenizes the raw inputs, 
     // determines the polarity of each, 
     // and attaches the "polarity" to each of the determined polarities

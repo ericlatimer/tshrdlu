@@ -119,7 +119,7 @@ class ReplierManager extends Actor with ActorLogging {
   import scala.concurrent.duration._
   import scala.concurrent.Future
   import scala.util.{Success,Failure}
-  implicit val timeout = Timeout(10 seconds)
+  implicit val timeout = Timeout(30 seconds)
 
   lazy val random = new scala.util.Random
 
