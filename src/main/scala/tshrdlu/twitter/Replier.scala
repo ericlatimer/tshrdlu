@@ -109,9 +109,9 @@ class SentimentReplier extends BaseReplier {
     else {
       val tweetMap = scala.io.Source.fromFile("usersLatestTweets.txt").getLines.toList.map(
           line => line.splitAt(line.indexOf(" "))).toMap
-      println("usersLatestTweets.txt")
-      tweetMap.foreach(println)
-      val lastTweet = tweetMap("@"+username)
+      //println("usersLatestTweets.txt")
+      //tweetMap.foreach(println)
+      val lastTweet = tweetMap(username)
       classifierOption = Some(Fancy.retrain(lastTweet, text, 0.5, true))
         //Fancy.retrain(lastTweet, text)
       if (text.trim == "fresh") {
@@ -120,7 +120,8 @@ class SentimentReplier extends BaseReplier {
       else {
         println(lastTweet)
       }
-      feedbackResponse
+      //feedbackResponse
+      handleNewMovieTweet(lastTweet, maxLength, username)
     }
   }
 
@@ -251,12 +252,14 @@ class SentimentReplier extends BaseReplier {
 
     // Get text of new status, convert to lower case, remove all non-alphanumeric characters to help with finding a movie title
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
-    if (List("thanks", "fresh", "rotten").contains(text.trim)) {
+    if (List("fresh", "rotten").contains(text.trim)) {
       // Handle Feedback
       handleFeedback(text, maxLength, username)
     }
     else {
       // Handle normal new tweet
+      println("Handling normal tweet: " + text)
+      Sentimenter.updateUsersPreviousTweets(text, username)
       handleNewMovieTweet(text, maxLength, username)
     }
   }
@@ -367,10 +370,16 @@ class SentimentReplier extends BaseReplier {
     val reviewLink = if ( totalReviews != "1"){
       val allMatches = {for { TitleRE(title,_,rev) <- TitleRE findAllIn s} yield (title.toLowerCase,rev)}.toList.toMap
       //println("allMatches: " + allMatches)
-      if(allMatches.keys.toList.contains(searchTerm))
+      if(allMatches.keys.toList.contains(searchTerm)) {
         allMatches(searchTerm)
-      else
+        //println("getReviews contains true")
+      }
+
+      else {
         ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+        //println("getReviews contains false")
+      }
+        
     }
     else
         ReviewLinkRE.findAllIn(s).matchData.next.group(1)
@@ -380,7 +389,6 @@ class SentimentReplier extends BaseReplier {
     }
       revs.mkString(" ")
   }
-
 
   /**
    * Use Sentiment140 API to determine polarity of input text
@@ -392,7 +400,7 @@ class SentimentReplier extends BaseReplier {
       if (classifierFile.exists) 
                 classifierOption = Some(loadClassifier[FeaturizedClassifier[String,String]]("classifier"))
                else
-                classifierOption = Some(Fancy.getClassifier("trainingDatas/bestTraining.xml", 0.5, true))
+                classifierOption = Some(Fancy.getClassifier("trainingDatas/combinedData.xml", 0.5, true))
       //classifierOption = Some(Fancy.getClassifier("bestTraining.xml", 0.5, true))
     }
 

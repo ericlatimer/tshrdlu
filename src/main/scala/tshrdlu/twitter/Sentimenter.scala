@@ -72,7 +72,7 @@ object Sentimenter {
 
 	def getOldPolarity(args: Array[String]) = {
 		// create an HttpPost object
-		val post = new HttpPost("http://www.sentiment140.com/api/bulkClassifyJson?appid=emoney33@gmail.com")
+		val post = new HttpPost("http://www.sentiment140.com/api/bulkClassifyJson?appid=REMOVED")
 
 		// set the Content-type
 		post.setHeader("Content-type", "application/json")
@@ -171,11 +171,37 @@ object Sentimenter {
         bw.write("<dataset>\n")
         for (tweet <- tweets) {
             println("tweet: " + tweet)
-            bw.write("""<item label=""""+tweet._1+"""">""")
-            bw.write("\n<content>"+tweet._2.trim+"</content>\n")
-            bw.write("</item>\n")
+            for (i <- 1 to 33) {
+	            bw.write("""<item label=""""+tweet._1+"""">""")
+	            bw.write("\n<content>"+tweet._2.trim+"</content>\n")
+	            bw.write("</item>\n")
+            }
         }           
         bw.write("\n</dataset>")
+        bw.close();
+	}
+
+	def updateUsersPreviousTweets(newTweet: String, fromUser: String) {
+	    val tweets = scala.io.Source.fromFile("usersLatestTweets.txt").getLines.toList
+        	.map(line => {line.splitAt(line.indexOf(" "))})
+        val users = tweets.map(x => x._1)
+		val outFile = new java.io.File("usersLatestTweets.txt")
+		val fw = new java.io.FileWriter(outFile.getName());
+	    val bw = new java.io.BufferedWriter(fw);
+
+        for (tweet <- tweets) {
+            println("tweet: " + tweet)
+            if (tweet._1 != "")
+	            if (tweet._1 != fromUser)
+	            	bw.write(tweet._1.trim + " " + tweet._2.trim + "\n")
+	            else 
+	            	bw.write(tweet._1.trim + " " + newTweet.trim + "\n")
+        }
+
+        if (!users.contains(fromUser)) {
+        	bw.write(fromUser.trim + " " + newTweet.trim + "\n")
+        }
+
         bw.close();
 	}
 }

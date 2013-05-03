@@ -147,10 +147,7 @@ class ReplierManager extends Actor with ActorLogging {
           randomFillerStatus(status)
       }
 
-      val stripped = stripLeadMention(status.getText).toLowerCase.trim.replaceAll("[^A-Za-z0-9 ]","")
-      println(stripped)
-      if (stripped != "thanks")
-        futureUpdate.foreach(context.parent ! UpdateStatus(_))
+      futureUpdate.foreach(context.parent ! UpdateStatus(_))
   }
 
   lazy val fillerStatusMessages = Vector(
