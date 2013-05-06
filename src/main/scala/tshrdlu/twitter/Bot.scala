@@ -104,11 +104,8 @@ class Bot extends Actor with ActorLogging {
         log.info("Replying to: " + status.getText)
         replierManager ! ReplyToStatus(status)
       }
-
   }
 }
-  
-
 
 class ReplierManager extends Actor with ActorLogging {
   import Bot._
@@ -183,7 +180,6 @@ class ReplierManager extends Actor with ActorLogging {
   }
 }
 
-
 // The Sampler collects possible responses. Does not implement a
 // filter for bot requests, so it should be connected to the sample
 // stream. Batches tweets together using the collector so we don't
@@ -207,8 +203,6 @@ class Sampler extends Actor with ActorLogging {
   }
 }
 
-
-
 // Collects until it reaches 100 and then sends them back to the
 // sender and the cycle begins anew.
 class Collector extends Actor with ActorLogging {
@@ -224,8 +218,6 @@ class Collector extends Actor with ActorLogging {
     }
   }
 }
-
-
 
 // The LuceneWriter actor extracts the content of each tweet, removes
 // the RT and mentions from the front and selects only tweets
@@ -252,7 +244,6 @@ class LuceneWriter extends Actor with ActorLogging {
     }
   }
 }
-
 
 object TwitterRegex {
 

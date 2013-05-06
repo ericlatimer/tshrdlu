@@ -2,12 +2,12 @@ package tshrdlu.twitter
 
 import io.Source
 
-/**
- * Created with IntelliJ IDEA.
- * User: eric
- */
-
-
+/** A class to store tokens from an input file full of topic models tokens
+  *
+  * It provides some lazy data structures containing said tokens
+  *
+  * @param inputFile the name of the file containing the tokens
+  */
 class TopicModeler(val inputFile: String) {
   def inputIterator = Source.fromFile(inputFile).getLines.toList
 

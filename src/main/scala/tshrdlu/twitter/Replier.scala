@@ -49,17 +49,18 @@ class SynonymReplier extends BaseReplier {
     val synTexts = (0 until 10).map(_ => Future(synonymize(text))) 
     Future.sequence(synTexts).map(_.filter(_.length <= maxLength))
   }
-
 }
 
-/**
- * An actor that constructs replies to a given status that mentions the user's 
- * opinion on a mentioned movie.  For best results, tweet at me something  
- * that expresses a clear sentiment about a movie, including the entire movie
- * title in the text.  The actor first tries to provide a response expressing
- * the same opinion as the original tweet, then resorts to disagreeing if 
- * necessary.
- */
+/** A class/actor that constructs replies to a given status that mentions the user's 
+  * opinion on a mentioned movie.  For best results, tweet at me something  
+  * that expresses a clear sentiment about a movie, including the entire movie
+  * title in the text.  The actor first tries to provide a response expressing
+  * the same opinion as the original tweet, then resorts to disagreeing if 
+  * necessary. 
+  * 
+  * @param newTweet the new tweet received from the user
+  * @param fromUser the name of the twittter user who tweeted at the bot
+  */
 class SentimentReplier extends BaseReplier {
   import Bot._ 
   import TwitterRegex._
@@ -80,17 +81,26 @@ class SentimentReplier extends BaseReplier {
 
   var classifierOption: Option[nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String] ] = None
 
-  //Class copied from previous Project Phase to extract just text from tweet string
+  /** Class copied from previous Project Phase to extract 
+    * just text from tweet string
+    *
+    * @param s the tweet text
+    */
   class TweetString(s: String) {
   	def dropUpto(attr: String, extra: Int = 4) = {
-	   val index = s.indexOf("\"" + attr + "\"")
-	   if (index == -1) "" else s.drop(index + attr.length + extra)
-	}
-	def getText(attr: String) = dropUpto(attr).takeWhile(_ != '"')
-	def getInt(attr: String) = dropUpto(attr,3).takeWhile(_ != ',')
+	     val index = s.indexOf("\"" + attr + "\"")
+	     if (index == -1) "" else s.drop(index + attr.length + extra)
+	  }
+
+	  def getText(attr: String) = dropUpto(attr).takeWhile(_ != '"')
+	  def getInt(attr: String) = dropUpto(attr,3).takeWhile(_ != ',')
   }
 
-  //Function to get a Sequence of all tweets of the current year of the provided twitter username 
+  /** A function to get a Sequence of all tweets of the 
+    * current year made by the provided twitter username 
+    *
+    * @param name the twitter handle of the current twitter instance (the bot)
+    */
   def getPrevTweets(name: String) :Seq[String] =  {
   	implicit def stringToTweetString(s: String) = new TweetString(s)
 
@@ -101,6 +111,13 @@ class SentimentReplier extends BaseReplier {
   	for (tweet <- tweets) yield stringToTweetString(tweet).getText("text")
   }
 
+  /** A function called when the received tweet is about a movie
+    *
+    * @param text the text of the tweet
+    * @param maxLength the max length response, defaulted at 140
+    * @param username the name of the tweeter
+    * @return A Future of a Sequence of reply candidates
+    */
   def handleFeedback(text: String, maxLength: Int = 140, username: String): Future[Seq[String]] = {
     // Reclassify
     if (text.trim == "thanks") {
@@ -125,6 +142,13 @@ class SentimentReplier extends BaseReplier {
     }
   }
 
+  /** A function called when the received tweet is about a movie 
+    *
+    * @param text the text of the tweet
+    * @param maxLength the max length response, defaulted at 140
+    * @param username the name of the tweeter
+    * @return A Future of a Sequence of reply candidates
+    */
   def handleNewMovieTweet(text: String, maxLength: Int = 140, username: String): Future[Seq[String]] = {
     // Get list of all previous tweets of the bot -- to prevent retweeting same review
     val myName = new TwitterStreamFactory().getInstance.getScreenName;
@@ -136,7 +160,6 @@ class SentimentReplier extends BaseReplier {
   
     // Regular expression used to extract ratings (freshness), reviews (quote), and links from Rotten Tomatoes search results 
     val ScoreRE = """"freshness":"([^"]*)","publication":"[\sA-Za-z\W ]+","quote":"([\sA-Za-z\W',\.]+)","links":\{("review":")?([^"]+)"?\}""".r
-
 
     // Read in list of valid movies from the movies.txt file, converting to lower case and removing non-alphanumeric characters
     val moviesList = scala.io.Source.fromFile("movies.txt").getLines.toList.map(_.toLowerCase).map(_.replaceAll("[^A-Za-z0-9 ]",""))
@@ -244,6 +267,12 @@ class SentimentReplier extends BaseReplier {
     }
   }
 
+  /** A function which fetches the replies for Bot.scala 
+    *
+    * @param status the received twitter status
+    * @param maxLength the max length response, defaulted at 140
+    * @return a Future of a Sequence of candiate replies
+    */
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
     log.info("Trying to reply via sentiments")
 
@@ -264,72 +293,82 @@ class SentimentReplier extends BaseReplier {
     }
   }
 
-  /**
-  * No movie found in input, tell user
-  */
+  /** An empty response
+    *
+    * @return a Future of a Sequence of candiate replies
+    */
   def noResponse(): Future[Seq[String]] = {
     Future.sequence(Seq(Future("")))
   }
 
-  /**
-  * Feedback
-  */
+  /** A response thanking the user for the feedback
+    *
+    * @return a Future of a Sequence of candiate replies
+    */
   def feedbackResponse(): Future[Seq[String]] = {
     Future.sequence(Seq(Future(
       "Thanks for the feedback, I've made the necessary adjustments.")))
   }
 
-  /**
-  * No movie found in input, tell user
-  */
+  /** A response which tells the user that the input didn't include a movie
+    * nor was it a feedback tweet
+    *
+    * @return a Future of a Sequence of candiate replies
+    */
   def noMovieFoundResponse(): Future[Seq[String]] = {
     Future.sequence(Seq(Future(
       "I didn't find a a movie from your tweet, please check your spelling and try again.")))
   }
 
-  /**
-   * Takes original tweet (text), maximum length of a tweet, and the 
-   * original tweet's polarity as input. Queries Twitter for list of 
-   * statuses including the words from the original tweet, gets "proper" tweets, 
-   * and returns candidate tweets that have the same polarity as the original text  
-   */
+  /** A function which queries Twitter for list of statuses
+    * including the words from the original tweet, gets "proper" tweets, and
+    * returns candidate tweets that have the same polarity as the original text 
+    *
+    * @param text the input tweet text
+    * @param maxL the maximum length of the reply tweet
+    * @param polarity the polarity of the input tweet
+    * @return a Future of a Sequence of candiate replies
+    */
   def defaultResponse(text: String, maxL: Int, polarity:String): Future[Seq[String]] = {
-	val statusSeqFutures: Seq[Future[Seq[Status]]] = 
-					SimpleTokenizer(text)
-					.filter(_.length > 3)
-					.filter(_.length < 10)
-					.filterNot(_.contains('/'))
-					.filter(tshrdlu.util.English.isSafe)
-					.sortBy(- _.length)
-					.take(3) 
-					.map(w => (context.parent ? 
-					SearchTwitter(new Query(w))).mapTo[Seq[Status]])
+    val statusSeqFutures: Seq[Future[Seq[Status]]] = 
+				SimpleTokenizer(text)
+				.filter(_.length > 3)
+				.filter(_.length < 10)
+				.filterNot(_.contains('/'))
+				.filter(tshrdlu.util.English.isSafe)
+				.sortBy(- _.length)
+				.take(3) 
+				.map(w => (context.parent ? 
+				SearchTwitter(new Query(w))).mapTo[Seq[Status]]
+    )
 
-  	// Convert this to a Future of a single sequence of candidate replies
-   	val statusesFuture: Future[Seq[Status]] =
-      	Future.sequence(statusSeqFutures).map(_.flatten)
+    // Convert this to a Future of a single sequence of candidate replies
+	    val statusesFuture: Future[Seq[Status]] =
+    	Future.sequence(statusSeqFutures).map(_.flatten)
 
- 	// Filter statuses to their text and make sure they are short enough to use.
-	// Filter out statuses that do not match the polarity of the original tweet.  
-    	statusesFuture.map(_.flatMap(getText)
-			.filter(_.length <= maxL)
-			.map(_.replaceAll("\"", ""))
-			.filterNot(_.contains("äöüÄÖÜßéèáàúùóò".toArray))
-			.filter(x => getPolarity(x) == polarity)
-			)	
+    // Filter statuses to their text and make sure they are short enough to use.
+    // Filter out statuses that do not match the polarity of the original tweet.  
+  	statusesFuture.map(_.flatMap(getText)
+        .filter(_.length <= maxL)
+        .map(_.replaceAll("\"", ""))
+        .filterNot(_.contains("äöüÄÖÜßéèáàúùóò".toArray))
+        .filter(x => getPolarity(x) == polarity)
+		)	
  }
 
-   /**
-   * Takes a sequence of candidate reviews of the same polarity, a boolean 
-   * isOpp specifying if the reply will be disagreeing (opposing) the original tweet,
-   * the maximum length of the tweet, and the list of statuses already tweeted by the 
-   * bot as input. If a quote/review from Rotten Tomatoes does not exceed the max 
-   * length, the quote without the URL is returned as a candidate.  If *every* candidate
-   * exceeds the max length, the appropriate number of characters is removed from each 
-   * quote to allow for the length requirement to be met.   
-   * Returns reviews/quotes that meet the length requirement and have not been already
-   * posted. 
-   */
+  /** A function which attempts to generate an interesting response
+    * If a quote/review from Rotten Tomatoes does not exceed the max 
+    * length, the quote without the URL is returned as a candidate.  If *every* candidate
+    * exceeds the max length, the appropriate number of characters is removed from each 
+    * quote to allow for the length requirement to be met.   
+    * Returns reviews/quotes that meet the length requirement and have not been already
+    * posted
+    *
+    * @param reviews a sequence of candidate reviews of the same polarity
+    * @param maxL the maximum length of the reply tweet
+    * @param prevTweets the list of statuses already tweeted by the bot
+    * @return a Future of a Sequence of candiate replies
+    */
   def extractResponse(reviews: Seq[Future[String]], maxL: Int, prevTweets: Seq[String]): Future[Seq[String]] = {
 	
 		val reviewFuture: Future[Seq[String]] = Future.sequence(reviews)
@@ -350,9 +389,12 @@ class SentimentReplier extends BaseReplier {
 					.filterNot(x => prevTweets.contains(x))}).map(seq => seq.filterNot(_ == "Filter me out please"))
   }
 
-  /**
-   * Use Rotten Tomatoes API to obtain search results for given movie title (search term)
-   */
+  /** Use Rotten Tomatoes API to obtain search results for given movie 
+    * title (search term)
+    *
+    * @param searchTerm the search term extracted from the input tweet
+    * @return a string of all the reviews found
+    */
   def getReviews(searchTerm: String ): String = {
     val term = searchTerm.replaceAll(" ","+") 
     val ReviewLinkRE = """reviews":"([^"]*)"""".r
@@ -366,47 +408,47 @@ class SentimentReplier extends BaseReplier {
 
     val totalReviews = TotalRE.findAllIn(s).matchData.next.group(1)
 
-    //println("term: " + term)
     val reviewLink = if ( totalReviews != "1"){
       val allMatches = {for { TitleRE(title,_,rev) <- TitleRE findAllIn s} yield (title.toLowerCase,rev)}.toList.toMap
-      //println("allMatches: " + allMatches)
-      if(allMatches.keys.toList.contains(searchTerm)) {
+      if(allMatches.keys.toList.contains(searchTerm))
         allMatches(searchTerm)
-        //println("getReviews contains true")
-      }
-
-      else {
-        ReviewLinkRE.findAllIn(s).matchData.next.group(1)
-        //println("getReviews contains false")
-      }
-        
+      else
+        ReviewLinkRE.findAllIn(s).matchData.next.group(1) 
     }
     else
-        ReviewLinkRE.findAllIn(s).matchData.next.group(1)
+      ReviewLinkRE.findAllIn(s).matchData.next.group(1)
 
     val revs = for (page <- 1 to 5) yield {
-     Source.fromURL(reviewLink+"?apikey="+api_key+"&review_type=all&page_limit=50&page="+page).mkString     
+      Source.fromURL(reviewLink+"?apikey="+api_key+"&review_type=all&page_limit=50&page="+page).mkString     
     }
-      revs.mkString(" ")
+    
+    revs.mkString(" ")
   }
 
-  /**
-   * Use Sentiment140 API to determine polarity of input text
-   */
+  /** A function which deterimes the polarity of the input tweet
+    *
+    * Uses a global var classifierOption for a minor optimization
+    * @param tweetStr the input tweet text
+    * @return the polarity of the input tweet text
+    */
   def getPolarity(tweetStr: String): String = {
     Sentimenter.generateTweetXMLFile(tweetStr)
     if (classifierOption == None) {
       val classifierFile = new File("classifier")
       if (classifierFile.exists) 
-                classifierOption = Some(loadClassifier[FeaturizedClassifier[String,String]]("classifier"))
-               else
-                classifierOption = Some(Fancy.getClassifier("trainingDatas/combinedData.xml", 0.5, true))
-      //classifierOption = Some(Fancy.getClassifier("bestTraining.xml", 0.5, true))
+        classifierOption = Some(loadClassifier[FeaturizedClassifier[String,String]]("classifier"))
+      else
+        classifierOption = Some(Fancy.getClassifier("trainingDatas/combinedData.xml", 0.5, true))
     }
 
     Fancy(classifierOption.get, "tweet.xml", false)
   }
 
+  /** A function which extracts the useful text from the tweet text input
+    *
+    * @param status the input tweet status
+    * @return an optional string if there is useable text remaining else None
+    */
   def getText(status: Status): Option[String] = {
     import tshrdlu.util.English.{isEnglish,isSafe}
 
@@ -421,12 +463,11 @@ class SentimentReplier extends BaseReplier {
   }
 }
 
-/**
- * An actor that constructs replies to a given status.
- * For best results, tweet at me something related to one of the 
- * topics from the "20 Newsgroups" data
- * e.g. Religion, baseball, atheism, windows, hockey, mideast, pc hardware
- */
+/** An actor that constructs replies to a given status.
+  * For best results, tweet at me something related to one of the 
+  * topics from the "20 Newsgroups" data
+  * e.g. Religion, baseball, atheism, windows, hockey, mideast, pc hardware
+  */
 class TopicModelReplier extends BaseReplier {
   import Bot._ 
   import TwitterRegex._
@@ -441,6 +482,12 @@ class TopicModelReplier extends BaseReplier {
 
   val modeler = new TopicModeler("minTopicKeys.txt")
 
+  /** A function which fetches the replies for Bot.scala 
+    *
+    * @param status the received twitter status
+    * @param maxLength the max length response, defaulted at 140
+    * @return a Future of a Sequence of candiate replies
+    */
   def getReplies(status: Status, maxLength: Int = 140): Future[Seq[String]] = {
     log.info("Trying to reply via topic models")
     val text = stripLeadMention(status.getText).toLowerCase
@@ -452,50 +499,52 @@ class TopicModelReplier extends BaseReplier {
 				.flatMap(w => modeler.wordTopicsMap.get(w))
 				.flatten
 
-	val topicWords:List[String] = statusTopicList.map(topic => 
-		modeler.topicWordsMap.getOrElse(topic,Set(" "))).take(4).flatten
+  	val topicWords:List[String] = statusTopicList.map(topic => 
+  		modeler.topicWordsMap.getOrElse(topic,Set(" "))).take(4).flatten
 
-	val statusQueryList :List[String] = topicWords
-				.filter(_.length > 4)
-                .filter(_.length < 11)
-	        	.sortBy(- _.length)
-				.distinct
-    
-    // Get a sequence of futures of status sequences (one seq for each query)
-    val statusSeqFutures: Seq[Future[Seq[Status]]] = 
-		if(statusQueryList.length <1) {
-			SimpleTokenizer(text)
-				.filter(_.length > 3)
-				.filter(_.length < 10)
-				.filterNot(_.contains('/'))
-				.filter(tshrdlu.util.English.isSafe)
-				.sortBy(- _.length)
-				.take(3) 
-				.map(w => (context.parent ? 
-					SearchTwitter(new Query(w))).mapTo[Seq[Status]])}
-		else { statusQueryList
-    			.map(w => (context.parent ? 
-					SearchTwitter(new Query(w))).mapTo[Seq[Status]])}
+  	val statusQueryList :List[String] = topicWords
+  				.filter(_.length > 4)
+                  .filter(_.length < 11)
+  	        	.sortBy(- _.length)
+  				.distinct
+      
+      // Get a sequence of futures of status sequences (one seq for each query)
+      val statusSeqFutures: Seq[Future[Seq[Status]]] = 
+  		if(statusQueryList.length <1) {
+  			SimpleTokenizer(text)
+  				.filter(_.length > 3)
+  				.filter(_.length < 10)
+  				.filterNot(_.contains('/'))
+  				.filter(tshrdlu.util.English.isSafe)
+  				.sortBy(- _.length)
+  				.take(3) 
+  				.map(w => (context.parent ? 
+  					SearchTwitter(new Query(w))).mapTo[Seq[Status]])}
+  		else { statusQueryList
+      			.map(w => (context.parent ? 
+  					SearchTwitter(new Query(w))).mapTo[Seq[Status]])}
 
-    // Convert this to a Future of a single sequence of candidate replies
-    val statusesFuture: Future[Seq[Status]] =
-      	Future.sequence(statusSeqFutures).map(_.flatten)
+      // Convert this to a Future of a single sequence of candidate replies
+      val statusesFuture: Future[Seq[Status]] =
+        	Future.sequence(statusSeqFutures).map(_.flatten)
 
-	statusesFuture.map{x => extractText(x, statusTopicList.toSet)}
+  	statusesFuture.map{x => extractText(x, statusTopicList.toSet)}
   }
 
-  /**
-   * Go through the list of tweets, gets "proper" tweets, determines
-   * topic distribution vectors of said tweets, calculates similarities
-   * between original tweet and candidate tweets
-   * Returns most similar tweeet
-   */
+  /** A function which goes through the list of tweets, gets "proper" tweets,
+    * determines topic distribution vectors of said tweets, calculates 
+    * similarities between original tweet and candidate tweets
+    *
+    * @param statusList a Sequence of statuses
+    * @param statusTopics a set of tokens from a topic
+    * @return the most similar tweet text
+    */
   def extractText(statusList: Seq[Status], statusTopics: Set[String]) = {
     val useableTweets = statusList
       .map(_.getText)
       .map {
-			case StripMentionsRE(rest) => rest
-			case x => x
+        case StripMentionsRE(rest) => rest
+        case x => x
       }
       .filterNot(_.contains('@'))
       .filterNot(_.contains('/'))
@@ -504,7 +553,7 @@ class TopicModelReplier extends BaseReplier {
 
     //Use topic model to select response
     val topicDistributions = for ( tweet <- useableTweets) yield {
-    			SimpleTokenizer(tweet).filter(_.length > 4)
+    		SimpleTokenizer(tweet).filter(_.length > 4)
 				.toSet
 				.take(3)
 				.toList
@@ -512,15 +561,22 @@ class TopicModelReplier extends BaseReplier {
 				.flatten}
     
     val topicSimilarity = topicDistributions.map(ids => 
-		ids.toSet.intersect(statusTopics).size * {
-			if(statusTopics.size -ids.toSet.size ==0 ) 1 
-			else (1/math.abs(statusTopics.size - ids.toSet.size)).toDouble})
+		  ids.toSet.intersect(statusTopics).size * {
+  			if(statusTopics.size -ids.toSet.size ==0 ) 
+          1 
+  			else 
+          (1/math.abs(statusTopics.size - ids.toSet.size)).toDouble})
     
     val topTweet = topicSimilarity.toList.zip(useableTweets).maxBy(_._1)._2
 
     List(topTweet)
   }
 
+  /** A function which extracts the useful text from the tweet text input
+    *
+    * @param status the input tweet status
+    * @return an optional string if there is useable text remaining else None
+    */
   def getText(status: Status): Option[String] = {
     import tshrdlu.util.English.{isEnglish,isSafe}
 
@@ -576,7 +632,6 @@ class StreamReplier extends BaseReplier {
     statusesFuture.map(_.flatMap(getText).filter(_.length <= maxLength))
   }
 
-
   /**
    * Go through the list of Statuses, filter out the non-English ones and
    * any that contain (known) vulgar terms, strip mentions from the front,
@@ -597,7 +652,6 @@ class StreamReplier extends BaseReplier {
   }
 
 }
-
 
 /**
  * An actor that constructs replies to a given status based on synonyms.

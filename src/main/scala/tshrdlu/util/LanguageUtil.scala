@@ -275,8 +275,10 @@ object OpenOfficeThesaurusConverter {
 
 }
 
+/** An abstract class containing functions to read in
+  * a file of words to create a set of them
+  */
 abstract class OtherLexica (code: String) {
-
   lazy val resourceDir = "/lang/" + code
   def appendPath(subdir: String) = resourceDir + subdir
   def getLexicon(filename: String) = 
@@ -284,9 +286,11 @@ abstract class OtherLexica (code: String) {
       .getLines
       .filterNot(_.startsWith(";")) // filter out comments
       .toSet
-
 }
 
+/** A class to lazily store the sets of positve and negative words
+  *
+  */
 class Polarity extends OtherLexica("eng") {
   lazy val posWords = getLexicon("positive-words.txt.gz")
   lazy val negWords = getLexicon("negative-words.txt.gz")

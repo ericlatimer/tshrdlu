@@ -13,10 +13,17 @@ import nak.core._
 import nak.data._
 import nak.liblinear.{LiblinearConfig,Solver}
 
+/** An object which contains the scallop options for the Sentimenter object
+  *
+  */
 object SentimenterOpts {
 
   import org.rogach.scallop._
-  
+ 
+  /** An apply method which contains the scallop options for the Sentimenter object
+    *
+    * @param args the arguments to main from the command line
+    */
   def apply(args: Array[String]) = new ScallopConf(args) {
     banner("""
 For usage see below:
@@ -33,14 +40,17 @@ For usage see below:
   }
 }
 
+/** An object which provides various functions needed throughout ReelTalk
+  *
+  */
 object Sentimenter {
 
+	/** A main method used for testing and debuging purposes
+  	  * Eliminates the need to fire up the twitter bot for testing
+  	  *
+  	  * @param args the arguments to main from the command line
+  	  */
   	def main(args: Array[String]) {
-		//val polarities = getPolarity(args)
-		//val tweetsAndPolarities = args.zip(polarities)
-		//tweetsAndPolarities.foreach(println)
-		//println("shortened url: " + shortenURL("http://goooooooooooooooooooooooogle.com"))
-
 		val opts = SentimenterOpts(args)
 
 		if (opts.version()) {
@@ -70,6 +80,11 @@ object Sentimenter {
 		}
   	}
 
+	/** An old function used in Phase 4 which relied on Sentimenter401
+  	  * Used to get polarities of a batch of tweets
+  	  *
+  	  * @param args an array of strings which are texts from tweet statuses
+  	  */
 	def getOldPolarity(args: Array[String]) = {
 		// create an HttpPost object
 		val post = new HttpPost("http://www.sentiment140.com/api/bulkClassifyJson?appid=REMOVED")
@@ -87,10 +102,6 @@ object Sentimenter {
 		// send the post request
 		val response = (new DefaultHttpClient).execute(post)
 
-		// print the response headers
-		//println("--- HEADERS ---")
-		//response.getAllHeaders.foreach(arg => println(arg))
-
 		val responseContent = response.getEntity.getContent()
 		val responseContentString = scala.io.Source.fromInputStream(responseContent)
 										.getLines().mkString
@@ -103,8 +114,12 @@ object Sentimenter {
 		polarities.takeRight(polarities.length-1)
 	}
 
+	/** A function to shorten a long URL
+  	  * Uses Bit.ly
+  	  *
+  	  * @param longUrl a string containing a URL
+  	  */
 	def shortenURL(longUrl :String) = {
-		//apiKey & login of a user
 		val file = new File("bitly.properties")
 		val login = getProperty(file,"login")
 		val apiKey = getProperty(file,"apiKey")
@@ -118,6 +133,10 @@ object Sentimenter {
 		}
 	}
 
+	/** A function to generate an xml file containing a single string (tweet text)
+  	  *
+  	  * @param tweet a string containing the tweet status text
+  	  */
 	def generateTweetXMLFile(tweet :String)  {
 		val polarity = "positive"
 	  	val out = new java.io.FileWriter("tweet.xml")
@@ -129,6 +148,11 @@ object Sentimenter {
 		out.close
 	}
 
+	/** A function to grab properties from a properties file
+  	  *
+  	  * @param file the properties file
+  	  * @param property the individual property key
+  	  */
 	def getProperty(file :File, property :String) = {
 		val creds = Source.fromFile(file).getLines.toList
 		val keys = for (line <- creds) yield {
@@ -141,7 +165,14 @@ object Sentimenter {
 		keys.filterNot(k => k == None)(0)
 	}
 
-	// If multiple files are specified for training and/or evaluation data, create a single file in the appropriate XML format.  
+	/** A function which concatenates multiple files into a single file
+  	  *
+  	  * If multiple files are specified for training and/or evaluation data, 
+  	  * create a single file in the appropriate XML format
+  	  * @param filelist a list of file names
+  	  * @param fileName the name of the resulting file
+  	  * @return the name of the resulting output file
+  	  */ 
 	def getSingleFile(fileList:List[String],fileName:String) = {
 		val out = new java.io.FileWriter(fileName)
 		out.write("<?xml version=\"1.0\"?>\n")
@@ -159,6 +190,12 @@ object Sentimenter {
 		fileName
 	}
 
+	/** A function which converts a text file containing tweet and annotation 
+	  * pairs into a corresponding XML file
+	  * 
+  	  * @param file name of the raw text file used as input
+  	  * @param resultFile the name of the XML output file
+  	  */
 	def convertRatedTweetsTxt2XML(file: String, resultFile: String) {
 		val outFile = new java.io.File(resultFile)
 		val fw = new java.io.FileWriter(outFile.getName());
@@ -181,6 +218,11 @@ object Sentimenter {
         bw.close();
 	}
 
+	/** A function which updates the state of previous tweets received per user 
+	  * 
+  	  * @param newTweet the new tweet received from the user
+  	  * @param fromUser the name of the twittter user who tweeted at the bot
+  	  */
 	def updateUsersPreviousTweets(newTweet: String, fromUser: String) {
 	    val tweets = scala.io.Source.fromFile("usersLatestTweets.txt").getLines.toList
         	.map(line => {line.splitAt(line.indexOf(" "))})

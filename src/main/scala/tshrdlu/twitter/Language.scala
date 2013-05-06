@@ -63,6 +63,9 @@ abstract class Language(code: String) {
 
 }
 
+/** An abstract class containing functions to read in
+  * a file of words to create a set of them
+  */
 abstract class OtherLexica (code: String) {
 
   lazy val resourceDir = "/lang/" + code
@@ -75,6 +78,9 @@ abstract class OtherLexica (code: String) {
 
 }
 
+/** A class to lazily store the sets of positve and negative words
+  *
+  */
 class WordLists extends OtherLexica("eng") {
   lazy val posWords = getLexicon("positive-words.txt.gz").map{_.toLowerCase}
   lazy val negWords = getLexicon("negative-words.txt.gz").map{_.toLowerCase}

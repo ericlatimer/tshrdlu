@@ -1,12 +1,11 @@
 package tshrdlu.twitter
 
 
-/**
- * Implements the L2R_LR trained classifier 
- * Outputs the confusion matrix
- * Default Features: BOW
- * Uses the "featurizerall" if --extended flag is set
- */
+/** Implements the L2R_LR trained classifier 
+  * Outputs the confusion matrix
+  * Default Features: BOW
+  * Uses the "featurizerall" if --extended flag is set
+  */
 object Fancy {
 
   import nak.NakContext._
@@ -18,147 +17,173 @@ object Fancy {
 
   val wordlists = new WordLists
 
-    // A function (with supporting regex) that reads the format of the PPA 
-    // files and turns them into Examples. E.g. a line like:
-    //   0 join board as director V
-    // becames an Example with "V" as the label, and "join board as director"
-    // as the features. Normally we'd go ahead and transform this into better
-    // features, but this shows what you'd be more likely to do if reading in
-    // documents.
-    def readRaw(traininPairs: Seq[(String,String)]) = 
-      for (pair <- traininPairs)
-        yield Example(pair._1, pair._2)
+  /** A function (with supporting regex) that reads the format of the PPA 
+    * files and turns them into Examples. E.g. a line like:
+    * 0 join board as director V becomes an Example with "V" as the label, 
+    * and "join board as director" as the features. Normally we'd go ahead 
+    * and transform this into better features, but this shows what you'd be 
+    * more likely to do if reading in documents.
+    * 
+    * @param traininPairs squence of training pairs
+    * @return Sequence of Example pairs
+    */
+  def readRaw(traininPairs: Seq[(String,String)]) = 
+    for (pair <- traininPairs)
+      yield Example(pair._1, pair._2)
 
-  def retrain(tweet: String, polarity:String, cost:Double,extended:Boolean) = {
-    val userTrainedFile = new java.io.File("userTraining.txt")
-    
-    val fw = new java.io.FileWriter(userTrainedFile.getName(),true);
-    val bw = new java.io.BufferedWriter(fw);
-    bw.write(polarity + " " + tweet+"\n");
-    bw.close();
+  /** A wrapper function for getClassifier which is used when the user inputs
+    * a feedback tweet.  Effectively this retrains and returns a new classifier
+    *
+    * @param tweet the original input tweet
+    * @param polarity the gold standard sentiment for the above tweet text
+    * @param cost the cost eventuall forwarded to LiblinearConfig
+    * @param extended a boolean that determines if the extended features are 
+    * used
+    * @return The freshly (re)trained classifier
+    */
+    def retrain(tweet: String, polarity:String, cost:Double,extended:Boolean) = {
+      val userTrainedFile = new java.io.File("userTraining.txt")
+      
+      val fw = new java.io.FileWriter(userTrainedFile.getName(),true);
+      val bw = new java.io.BufferedWriter(fw);
+      bw.write(polarity + " " + tweet+"\n");
+      bw.close();
 
-    Sentimenter.convertRatedTweetsTxt2XML("userTraining.txt", 
-                        "userTraining.xml")
+      Sentimenter.convertRatedTweetsTxt2XML("userTraining.txt", 
+                          "userTraining.xml")
 
-    Sentimenter.getSingleFile(List("trainingDatas/bestTraining.xml", "userTraining.xml"),
-      "trainingDatas/combinedData.xml")
-    getClassifier("trainingDatas/combinedData.xml",cost,extended)
-  }
-
-  def getClassifier(trainfile:String,cost:Double,extended:Boolean) : nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String] = {
-    //Digest training data
-    val trainXML = scala.xml.XML.loadFile(trainfile)
-    val allTrainingLabels = (trainXML \\ "item").map { item =>
-      ((item \ "@label").text)
+      Sentimenter.getSingleFile(List("trainingDatas/bestTraining.xml", "userTraining.xml"),
+        "trainingDatas/combinedData.xml")
+      getClassifier("trainingDatas/combinedData.xml",cost,extended)
     }
 
-    val allTrainingTweets = (trainXML \\ "content").map{x => x.text}
-    val allTrainingPairs = allTrainingLabels.zip(allTrainingTweets).filter(x=>List("fresh","rotten").contains(x._1))
-
-    // A featurizer that simply splits the raw inputs 
-    // and attaches each token to "word" (Bag of Words)
-    val featurizer = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input)
-        tokens.map{word => FeatureObservation("word"+"="+word)} 
+  /** A wrapper function for getClassifier which is used when the user inputs
+    * a feedback tweet.  Effectively this retrains and returns a new classifier
+    *
+    * @param tweet the original input tweet
+    * @param polarity the gold standard sentiment for the above tweet text
+    * @param cost the cost eventuall forwarded to LiblinearConfig
+    * @param extended a boolean that determines if the extended features are 
+    * used
+    * @return The freshly (re)trained classifier
+    */
+    def getClassifier(trainfile:String,cost:Double,extended:Boolean) = { 
+      //Digest training data
+      val trainXML = scala.xml.XML.loadFile(trainfile)
+      val allTrainingLabels = (trainXML \\ "item").map { item =>
+        ((item \ "@label").text)
       }
-    }
 
-    // A featurizer that simply splits the raw inputs, 
-    // lowercases each and attaches each to "word" (Bag of Words)
-    val featurizerLowerCase = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input).map(_.toLowerCase)
-        tokens.map{word => FeatureObservation("word"+"="+word)} 
+      val allTrainingTweets = (trainXML \\ "content").map{x => x.text}
+      val allTrainingPairs = allTrainingLabels.zip(allTrainingTweets).filter(x=>List("fresh","rotten").contains(x._1))
+
+      // A featurizer that simply splits the raw inputs 
+      // and attaches each token to "word" (Bag of Words)
+      val featurizer = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input)
+          tokens.map{word => FeatureObservation("word"+"="+word)} 
+        }
       }
-    }
 
-    // A featurizer that simply splits the raw inputs, 
-    // filters out any "stop words" and attaches the remaining words
-    // to "word" (Bag of Words)
-    val featurizerStopWords = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input).filterNot(wordlists.stopwords)
-        tokens.map{word => FeatureObservation("word"+"="+word)} 
+      // A featurizer that simply splits the raw inputs, 
+      // lowercases each and attaches each to "word" (Bag of Words)
+      val featurizerLowerCase = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input).map(_.toLowerCase)
+          tokens.map{word => FeatureObservation("word"+"="+word)} 
+        }
       }
-    }
 
-   // A featurizer that extracts all bigrams from the input and
-   // attaches each to "bigram"
-   val featurizerBigrams = new Featurizer[String,String] {
-    def apply(input: String) = {
-       val tokens = Twokenize(input).toList.sliding(2).toList
-            tokens.map{bigram => FeatureObservation("bigram"+"="+bigram)}
-    }
-  }
+      // A featurizer that simply splits the raw inputs, 
+      // filters out any "stop words" and attaches the remaining words
+      // to "word" (Bag of Words)
+      val featurizerStopWords = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input).filterNot(wordlists.stopwords)
+          tokens.map{word => FeatureObservation("word"+"="+word)} 
+        }
+      }
+
+      // A featurizer that extracts all bigrams from the input and
+      // attaches each to "bigram"
+      val featurizerBigrams = new Featurizer[String,String] {
+        def apply(input: String) = {
+           val tokens = Twokenize(input).toList.sliding(2).toList
+                tokens.map{bigram => FeatureObservation("bigram"+"="+bigram)}
+        }
+      }
   
-   // A featurizer that splits/tokenizes the raw inputs, lowercases each,
-   // filters out the stopwords, and attaches each remaining word to "word"
-   // It also determines the polarity of each remaining word and attaches each
-   // of those polarities to "polarity".
-   // This featurizer also adds the features created from the featurizerBigrams (above)
-    val featurizerBigramsAll = new Featurizer[String,String] {
-      def apply(input: String) = {
-         val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
-              val sentiments = tokens.map{token => getPolarity(token)}
-              val tokenSentiments = tokens.zip(sentiments)
-              val firstFeatures = tokenSentiments.map{pair => 
-                List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
-         val bigrams = Twokenize(input).map(_.toLowerCase).toList.sliding(2).toList
-              val secondFeatures = bigrams.map{bigram => FeatureObservation("bigram"+"="+bigram)}
-         firstFeatures ++ secondFeatures
+      // A featurizer that splits/tokenizes the raw inputs, lowercases each,
+      // filters out the stopwords, and attaches each remaining word to "word"
+      // It also determines the polarity of each remaining word and attaches each
+      // of those polarities to "polarity".
+      // This featurizer also adds the features created from the featurizerBigrams (above)
+      val featurizerBigramsAll = new Featurizer[String,String] {
+        def apply(input: String) = {
+           val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
+                val sentiments = tokens.map{token => getPolarity(token)}
+                val tokenSentiments = tokens.zip(sentiments)
+                val firstFeatures = tokenSentiments.map{pair => 
+                  List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+           val bigrams = Twokenize(input).map(_.toLowerCase).toList.sliding(2).toList
+                val secondFeatures = bigrams.map{bigram => FeatureObservation("bigram"+"="+bigram)}
+           firstFeatures ++ secondFeatures
+        }
       }
-    }
 
-    // A featurizer that simply splits the raw inputs, 
-    // lowercases each, removes stopwords 
-    // and attaches the remaing tokens to "word" (Bag of Words)
-    val featurizerStopWordsAndLC = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
-        tokens.map{word => FeatureObservation("word"+"="+word)} 
+      // A featurizer that simply splits the raw inputs, 
+      // lowercases each, removes stopwords 
+      // and attaches the remaing tokens to "word" (Bag of Words)
+      val featurizerStopWordsAndLC = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
+          tokens.map{word => FeatureObservation("word"+"="+word)} 
+        }
       }
-    }
 
-    // A featurizer that tokenizes the raw inputs, 
-    // lowercases each, removes stopwords 
-    // and attaches the remaining words to "word" (Bag of Words)
-    val featurizerall = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input).map(_.toLowerCase)//.filterNot(wordlists.stopwords)
-        val trigrams = (List("start1", "start2") ++ tokens).toList.sliding(3).toList
-        //trigrams.foreach(println)
-        val tokensAndItsPrev2 = tokens.zip(trigrams)
-        //tokensAndItsPrev2.foreach(println)
-        val sentiments = tokensAndItsPrev2.map{tokenAndPrev2 => getPolarity(tokenAndPrev2)}
-        val tokenSentiments = tokens.zip(sentiments)
-        tokenSentiments.map{pair => 
-          List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+      // A featurizer that tokenizes the raw inputs, 
+      // lowercases each, gets the updated polarity
+      // and attaches the remaining words to "word" (Bag of Words)
+      val featurizerall = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input).map(_.toLowerCase)//.filterNot(wordlists.stopwords)
+          val trigrams = (List("start1", "start2") ++ tokens).toList.sliding(3).toList
+          //trigrams.foreach(println)
+          val tokensAndItsPrev2 = tokens.zip(trigrams)
+          //tokensAndItsPrev2.foreach(println)
+          val sentiments = tokensAndItsPrev2.map{tokenAndPrev2 => getPolarity(tokenAndPrev2)}
+          val tokenSentiments = tokens.zip(sentiments)
+          tokenSentiments.map{pair => 
+            List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+        }
       }
-    }
 
-    val featurizerallOld = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
-        val sentiments = tokens.map{token => getPolarity(token)}
-        val tokenSentiments = tokens.zip(sentiments)
-        tokenSentiments.map{pair => 
-          List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+      // A featurizer that tokenizes the raw inputs, 
+      // lowercases each, filter for stop words, gets the old polarity
+      // and the word (Bag of Words)
+      val featurizerallOld = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input).map(_.toLowerCase).filterNot(wordlists.stopwords)
+          val sentiments = tokens.map{token => getPolarity(token)}
+          val tokenSentiments = tokens.zip(sentiments)
+          tokenSentiments.map{pair => 
+            List(FeatureObservation("polarity"+"="+pair._2),FeatureObservation("word"+"="+pair._1))}.flatten 
+        }
       }
-    }
 
-    // A featurizer that tokenizes the raw inputs, 
-    // determines the polarity of each, 
-    // and attaches the "polarity" to each of the determined polarities
-    val featurizerWordSentiments = new Featurizer[String,String] {
-      def apply(input: String) = {
-        val tokens = Twokenize(input)
-        val sentiments = tokens.map{token => getPolarity(token.toLowerCase)}
-        val tokenSentiments = tokens.zip(sentiments)
-        tokenSentiments.map{pair => 
-          FeatureObservation("polarity"+"="+pair._2)} 
+      // A featurizer that tokenizes the raw inputs, 
+      // determines the polarity of each, 
+      // and attaches the "polarity" to each of the determined polarities
+      val featurizerWordSentiments = new Featurizer[String,String] {
+        def apply(input: String) = {
+          val tokens = Twokenize(input)
+          val sentiments = tokens.map{token => getPolarity(token.toLowerCase)}
+          val tokenSentiments = tokens.zip(sentiments)
+          tokenSentiments.map{pair => 
+            FeatureObservation("polarity"+"="+pair._2)} 
+        }
       }
-    }
 
     // A featurizer that tokenizes the raw inputs, 
     // determines the polarity of each token,
@@ -175,7 +200,7 @@ object Fancy {
 
     // Get the training examples in their raw format.  
     val rawExamples = readRaw(allTrainingPairs).toList
-    //println("rawExamples: " + rawExamples.head)
+
     println("Done converting training to raw format at time: " + java.lang.System.currentTimeMillis())
 
     // Configure and train with liblinear. Here we use the (default) L2-Regularized 
@@ -187,7 +212,17 @@ object Fancy {
     classifier
   }
 
-  def apply(classifier:nak.core.IndexedClassifier[String] with nak.core.FeaturizedClassifier[String,String],evalfile:String,details:Boolean)  = {
+  /** An apply function which 
+    *
+    * @param classifier a pretrained classifier
+    * @param evalfile the file to evaluate that contains the input tweet
+    * @param details a boolean that determines if the extra data is shown 
+    * (itemized correct and wrong breakdowns)
+    * @return the best prediction
+    */
+  def apply(classifier:nak.core.IndexedClassifier[String] 
+      with nak.core.FeaturizedClassifier[String,String],evalfile:String,
+        details:Boolean) = {
     //Digest eval data
     val evalXML = scala.xml.XML.loadFile(evalfile)
     val allEvalLabels = (evalXML \\ "item").map { item =>
@@ -218,20 +253,33 @@ object Fancy {
     //println(predictions.head)
     predictions.head
   }
-
  
-  // Function to determine the polarity of the passed word
-  // positive (1) if the word is in the positive word list
-  // negative (-1) if the word is in the negative word list
-  // neutral (0) if the word is in neither list 
+  /** An apply Function to determine the polarity of the passed word
+    * positive (1) if the word is in the positive word list
+    * negative (-1) if the word is in the negative word list
+    * neutral (0) if the word is in neither list 
+    *
+    * @param token a word to get the polarity of
+    * @return the polarity
+    */
   def getPolarity(token: String) = {
-  if (wordlists.posWords.contains(token)) 1 
-    else if (wordlists.negWords.contains(token)) -1
-    else 0
+    if (wordlists.posWords.contains(token)) 1 
+      else if (wordlists.negWords.contains(token)) 
+        -1
+      else 
+        0
   }
 
   def negationWords = List("not")
 
+  /** A function similar to above however it uses the previos two tokens
+    * for each token to check for negation.  If negation present, returns
+    * inverse for the token
+    *
+    * @param tokenAndPrev2 the input token and a trigram containing the
+    * previous two tokens and the token itself
+    * @return the polarity
+    */
   def getPolarity(tokenAndPrev2: (String,List[String])) = {
     val token = tokenAndPrev2._1
     val trigram = tokenAndPrev2._2
@@ -240,9 +288,6 @@ object Fancy {
       if (negationWords.contains(trigram(0)) || negationWords.contains(trigram(1)) 
         || trigram(0).endsWith("n't") || trigram(1).endsWith("n't")
         || trigram(0).endsWith("nt") || trigram(1).endsWith("nt")) {
-        //println("GOOOOOOOOOOOOOOOD Token: " + token)
-        //println("trigram(0): " + trigram(0))
-        //println("trigram(1): " + trigram(1))
          -1
       }
       else
