@@ -118,7 +118,7 @@ class ReplierManager extends Actor with ActorLogging {
   import scala.util.{Success,Failure}
   import TwitterRegex._
 
-  implicit val timeout = Timeout(30 seconds)
+  implicit val timeout = Timeout(60 seconds)
 
   lazy val random = new scala.util.Random
 

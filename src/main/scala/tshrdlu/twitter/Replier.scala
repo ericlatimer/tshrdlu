@@ -72,7 +72,7 @@ class SentimentReplier extends BaseReplier {
   import akka.util._
   import scala.concurrent.duration._
   import scala.concurrent.Future
-  implicit val timeout = Timeout(30 seconds)
+  implicit val timeout = Timeout(60 seconds)
   import chalk.lang.eng.Twokenize
   import nak.NakContext._
   import nak.core._
@@ -118,28 +118,23 @@ class SentimentReplier extends BaseReplier {
     * @param username the name of the tweeter
     * @return A Future of a Sequence of reply candidates
     */
-  def handleFeedback(text: String, maxLength: Int = 140, username: String): Future[Seq[String]] = {
+  def handleFeedback(polarity: String, maxLength: Int = 140, username: String): Future[Seq[String]] = {
     // Reclassify
-    if (text.trim == "thanks") {
-      noResponse
+    val tweetMap = scala.io.Source.fromFile("usersLatestTweets.txt").getLines.toList.map(
+        line => line.splitAt(line.indexOf(" "))).toMap
+    //println("usersLatestTweets.txt")
+    //tweetMap.foreach(println)
+    val lastTweet = tweetMap(username)
+    classifierOption = Some(Fancy.retrain(lastTweet, polarity, 0.5, true))
+      //Fancy.retrain(lastTweet, text)
+    if (polarity.trim == "fresh") {
+      println(lastTweet)
     }
     else {
-      val tweetMap = scala.io.Source.fromFile("usersLatestTweets.txt").getLines.toList.map(
-          line => line.splitAt(line.indexOf(" "))).toMap
-      //println("usersLatestTweets.txt")
-      //tweetMap.foreach(println)
-      val lastTweet = tweetMap(username)
-      classifierOption = Some(Fancy.retrain(lastTweet, text, 0.5, true))
-        //Fancy.retrain(lastTweet, text)
-      if (text.trim == "fresh") {
-        println(lastTweet)
-      }
-      else {
-        println(lastTweet)
-      }
-      //feedbackResponse
-      handleNewMovieTweet(lastTweet, maxLength, username)
+      println(lastTweet)
     }
+    //feedbackResponse
+    handleNewMovieTweet(lastTweet, maxLength, username)
   }
 
   /** A function called when the received tweet is about a movie 
@@ -206,7 +201,9 @@ class SentimentReplier extends BaseReplier {
 
         // List of "freshness" score from rotten tomatoes and corresponding quote/review and full review link (if available) for movie
         val score_quote_link: List[(String,String,String)]= {for { ScoreRE(score,quote,_,link) <- ScoreRE findAllIn reviews} yield (score,quote,link)}.toList
-        
+        //println("score_quote_link")
+        //score_quote_link.foreach(println)
+
         // List of scores paired with concatenated quotes/reviews and links
         // The URLs are shortened using the Bit.ly API    
         val score_quote = score_quote_link.map(sql => {
@@ -247,6 +244,7 @@ class SentimentReplier extends BaseReplier {
          // If negative polarity, first try to respond with a "rotten" review
         if(polarity == "rotten"){
           if (freshCount.isEmpty && rottenCount.isEmpty && neutralCount.isEmpty) {
+            println("rotten, going with default response")
             defaultResponse(text,maxLength,polarity)
           }
           else {
@@ -281,9 +279,12 @@ class SentimentReplier extends BaseReplier {
 
     // Get text of new status, convert to lower case, remove all non-alphanumeric characters to help with finding a movie title
     val text = stripLeadMention(status.getText).toLowerCase.replaceAll("[^A-Za-z0-9 ]","")
-    if (List("fresh", "rotten").contains(text.trim)) {
+    val polarity = if (text.toLowerCase.trim.startsWith("fresh")) "fresh"
+                      else if (text.toLowerCase.trim.startsWith("rotten")) "rotten"
+                        else "normal"
+    if (List("fresh", "rotten").contains(polarity)) {
       // Handle Feedback
-      handleFeedback(text, maxLength, username)
+      handleFeedback(polarity, maxLength, username)
     }
     else {
       // Handle normal new tweet
@@ -317,7 +318,7 @@ class SentimentReplier extends BaseReplier {
     */
   def noMovieFoundResponse(): Future[Seq[String]] = {
     Future.sequence(Seq(Future(
-      "I didn't find a a movie from your tweet, please check your spelling and try again.")))
+      "I didn't find a a movie from your tweet, please check your spelling and try again. Log " + java.lang.System.currentTimeMillis())))
   }
 
   /** A function which queries Twitter for list of statuses
